@@ -1,20 +1,50 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, Modal, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LineChart } from 'react-native-chart-kit';
-import { Card } from '../components/UI';
+import { Card, PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
-import { getWorkouts } from '../utils/storage';
-import { getExerciseById } from '../data/exercises';
+import { getWorkoutDates, getWorkouts, getWeightUnit } from '../utils/storage';
+import { formatWeight } from '../utils/units';
+import WorkoutCalendar from '../components/WorkoutCalendar';
 
-const screenWidth = Dimensions.get('window').width;
+function shortDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
 
-export default function AnalyticsScreen() {
+function shortTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+// Builds one label per workout using its own logged date. If two or more
+// recent workouts fall on the same calendar day, appends the time so the
+// x-axis doesn't show the same date repeated with no way to tell bars apart.
+function buildChartLabels(items) {
+  const dateCounts = {};
+  items.forEach((item) => {
+    const key = shortDate(item.date);
+    dateCounts[key] = (dateCounts[key] || 0) + 1;
+  });
+  return items.map((item) => {
+    const key = shortDate(item.date);
+    return dateCounts[key] > 1 ? `${key}\n${shortTime(item.date)}` : key;
+  });
+}
+
+export default function AnalyticsScreen({ navigation }) {
   const [workouts, setWorkouts] = useState([]);
+  const [workoutDates, setWorkoutDates] = useState([]);
+  const [showScoreInfo, setShowScoreInfo] = useState(false);
+  const [unit, setUnit] = useState('kg');
 
   useFocusEffect(
     useCallback(() => {
-      getWorkouts().then((w) => setWorkouts(w.sort((a, b) => new Date(a.date) - new Date(b.date))));
+      Promise.all([getWorkouts(), getWorkoutDates(), getWeightUnit()]).then(([w, dates, weightUnit]) => {
+        setWorkouts(w.sort((a, b) => new Date(a.date) - new Date(b.date)));
+        setWorkoutDates(dates);
+        setUnit(weightUnit);
+      });
     }, [])
   );
 
@@ -29,6 +59,7 @@ export default function AnalyticsScreen() {
   // Total volume per workout
   const volumeByWorkout = workouts.map((w) => ({
     date: w.date,
+    name: w.name,
     volume: w.exercises.reduce(
       (sum, e) => sum + e.sets.reduce((s, x) => s + x.weight * x.reps, 0),
       0
@@ -58,15 +89,19 @@ export default function AnalyticsScreen() {
   const totalTracked = improved + maintained + declined;
   const progressScore = totalTracked ? Math.round((improved / totalTracked) * 100) : 0;
 
-  const chartData = {
-    labels: volumeByWorkout.slice(-6).map((_, i) => `${i + 1}`),
-    datasets: [{ data: volumeByWorkout.slice(-6).map((w) => Math.round(w.volume)) }],
-  };
+  const recentVolumes = volumeByWorkout.slice(-6);
+  const maxVolume = Math.max(...recentVolumes.map((item) => item.volume), 1);
+  const chartLabels = buildChartLabels(recentVolumes);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
-      <Card style={{ marginBottom: spacing.md, alignItems: 'center' }}>
-        <Text style={styles.scoreLabel}>Progress Score</Text>
+      <Card style={{ marginBottom: spacing.md, alignItems: 'center', minHeight: 180 }}>
+        <View style={styles.scoreLabelRow}>
+          <Text style={styles.scoreLabel}>Progress Score</Text>
+          <Pressable onPress={() => setShowScoreInfo(true)} hitSlop={8}>
+            <Text style={styles.infoIcon}>ⓘ</Text>
+          </Pressable>
+        </View>
         <Text style={styles.scoreValue}>{progressScore}%</Text>
         <View style={styles.scoreBreakdown}>
           <Text style={styles.breakdownText}>↑ {improved} improved</Text>
@@ -78,7 +113,7 @@ export default function AnalyticsScreen() {
       <View style={styles.statsGrid}>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Total Weight Lifted</Text>
-          <Text style={styles.statValue}>{Math.round(totalWeightLifted).toLocaleString()}kg</Text>
+          <Text style={styles.statValue}>{formatWeight(totalWeightLifted, unit)}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Total Sets</Text>
@@ -90,28 +125,51 @@ export default function AnalyticsScreen() {
         </Card>
       </View>
 
-      {chartData.datasets[0].data.length > 1 && (
+      {recentVolumes.length > 1 && (
         <Card style={{ marginTop: spacing.md }}>
           <Text style={styles.chartTitle}>Volume Per Workout (recent)</Text>
-          <LineChart
-            data={chartData}
-            width={screenWidth - spacing.md * 4}
-            height={180}
-            withInnerLines={false}
-            chartConfig={{
-              backgroundColor: colors.card,
-              backgroundGradientFrom: colors.card,
-              backgroundGradientTo: colors.card,
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(79, 224, 164, ${opacity})`,
-              labelColor: () => colors.muted,
-              propsForDots: { r: '4', strokeWidth: '2', stroke: colors.accent },
-            }}
-            bezier
-            style={{ borderRadius: 12 }}
-          />
+          <View style={styles.chartBars}>
+            {recentVolumes.map((item, index) => (
+              <View key={index} style={styles.barColumn}>
+                <View style={[styles.barFill, { height: Math.max(24, (item.volume / maxVolume) * 120) }]} />
+                <Text style={styles.barLabel} numberOfLines={2}>{chartLabels[index]}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.chartHint}>Recent loads are shown in a simple bar chart based on your logged volume.</Text>
         </Card>
       )}
+
+      <Card style={{ marginTop: spacing.md }}>
+        <Text style={styles.chartTitle}>Workout Calendar</Text>
+        <Text style={styles.calendarHint}>Tap any day to see what you did.</Text>
+        <WorkoutCalendar
+          workoutDates={workoutDates}
+          onDayPress={(date) => navigation.navigate('DayWorkout', { date })}
+        />
+      </Card>
+
+      <Modal visible={showScoreInfo} transparent animationType="fade" onRequestClose={() => setShowScoreInfo(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowScoreInfo(false)}>
+          <Pressable style={styles.modalCard}>
+            <Text style={styles.modalTitle}>How Progress Score is calculated</Text>
+            <Text style={styles.modalBody}>
+              For every exercise you've logged more than once, we compare the
+              heaviest weight from your first session to the heaviest weight
+              from your most recent session.
+            </Text>
+            <Text style={styles.modalBody}>
+              • Went up → counted as improved{'\n'}
+              • Stayed the same → counted as maintained{'\n'}
+              • Went down → counted as declined
+            </Text>
+            <Text style={styles.modalBody}>
+              Progress Score is the percentage of tracked exercises that improved.
+            </Text>
+            <PrimaryButton title="Got it" onPress={() => setShowScoreInfo(false)} style={{ marginTop: spacing.sm }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -119,7 +177,9 @@ export default function AnalyticsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, padding: spacing.lg },
+  scoreLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   scoreLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase' },
+  infoIcon: { color: colors.muted, fontSize: 14 },
   scoreValue: { color: colors.accent, fontSize: 48, fontWeight: '900', marginVertical: spacing.xs },
   scoreBreakdown: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
   breakdownText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
@@ -128,4 +188,14 @@ const styles = StyleSheet.create({
   statLabel: { color: colors.muted, fontSize: 11, fontWeight: '600', marginBottom: 4, textAlign: 'center' },
   statValue: { color: colors.text, fontSize: 16, fontWeight: '800' },
   chartTitle: { color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm, textTransform: 'uppercase' },
+  chartBars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 150, marginTop: spacing.sm },
+  barColumn: { flex: 1, alignItems: 'center', marginHorizontal: 4 },
+  barFill: { width: '100%', maxWidth: 24, borderRadius: 8, backgroundColor: colors.accent, minHeight: 12 },
+  barLabel: { color: colors.muted, fontSize: 10, marginTop: spacing.xs, textAlign: 'center' },
+  chartHint: { color: colors.muted, fontSize: 12, marginTop: spacing.sm },
+  calendarHint: { color: colors.muted, fontSize: 11, marginBottom: spacing.sm },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
+  modalCard: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
+  modalTitle: { color: colors.text, fontSize: 17, fontWeight: '800', marginBottom: spacing.sm },
+  modalBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: spacing.sm },
 });

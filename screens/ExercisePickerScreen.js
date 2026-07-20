@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
 import { Card, Pill, PrimaryButton } from '../components/UI';
+import MuscleIcon from '../components/MuscleIcon';
 import { colors, spacing } from '../utils/theme';
 import { MUSCLE_GROUPS, searchExercises } from '../data/exercises';
 
@@ -75,7 +76,9 @@ export default function ExercisePickerScreen({ route, navigation }) {
                   isSelected && { borderColor: colors.accent, backgroundColor: colors.cardAlt },
                 ]}
               >
-                <Text style={{ fontSize: 24, marginRight: spacing.md }}>{item.emoji}</Text>
+                <View style={styles.iconWrap}>
+                  <MuscleIcon equipment={item.equipment} size={22} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.exName}>{item.name}</Text>
                   <Text style={styles.exMeta}>{item.muscle} · {item.equipment}</Text>
@@ -109,6 +112,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
   exName: { color: colors.text, fontSize: 15, fontWeight: '700' },
   exMeta: { color: colors.muted, fontSize: 12, marginTop: 2 },
   checkbox: {

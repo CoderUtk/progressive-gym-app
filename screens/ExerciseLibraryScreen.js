@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
 import { Card, Pill } from '../components/UI';
+import MuscleIcon from '../components/MuscleIcon';
 import { colors, spacing } from '../utils/theme';
 import { EXERCISES, MUSCLE_GROUPS, searchExercises } from '../data/exercises';
 
@@ -45,7 +46,9 @@ export default function ExerciseLibraryScreen({ navigation }) {
         renderItem={({ item }) => (
           <Pressable onPress={() => navigation.navigate('ExerciseHistory', { exerciseId: item.id })}>
             <Card style={{ marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 28, marginRight: spacing.md }}>{item.emoji}</Text>
+              <View style={styles.iconWrap}>
+                <MuscleIcon equipment={item.equipment} size={26} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.exName}>{item.name}</Text>
                 <Text style={styles.exMeta}>{item.muscle} · {item.equipment}</Text>
@@ -75,5 +78,14 @@ const styles = StyleSheet.create({
   },
   exName: { color: colors.text, fontSize: 16, fontWeight: '700' },
   exMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.cardAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
   empty: { color: colors.muted, textAlign: 'center', marginTop: 40 },
 });

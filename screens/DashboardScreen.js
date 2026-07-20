@@ -2,28 +2,35 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card, PrimaryButton } from '../components/UI';
+import MuscleIcon from '../components/MuscleIcon';
 import { colors, spacing } from '../utils/theme';
 import { getExerciseById } from '../data/exercises';
 import {
   getWorkoutsForExercise,
-  seedIfEmpty,
   getTemplates,
   getActiveTemplateId,
+  getWeightUnit,
 } from '../utils/storage';
 import { suggestNextTarget } from '../utils/progressiveOverload';
+import { formatWeight } from '../utils/units';
+
+const STEP = 1; // fixed increment, irrespective of unit
 
 export default function DashboardScreen({ navigation }) {
   const [template, setTemplate] = useState(null);
   const [targets, setTargets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [unit, setUnit] = useState('kg');
 
   const loadTargetsFor = useCallback(async (tmpl) => {
+    const weightUnit = await getWeightUnit();
+    setUnit(weightUnit);
     const results = [];
     for (const id of tmpl.exerciseIds) {
       const ex = getExerciseById(id);
       if (!ex) continue;
       const history = await getWorkoutsForExercise(id);
-      const suggestion = suggestNextTarget(history);
+      const suggestion = suggestNextTarget(history, 8, STEP);
       const lastSession = history[0];
       results.push({ exercise: ex, lastSession, suggestion });
     }
@@ -32,7 +39,6 @@ export default function DashboardScreen({ navigation }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    await seedIfEmpty();
     const activeId = await getActiveTemplateId();
     const all = await getTemplates();
     const active = all.find((t) => t.id === activeId) || all[0];
@@ -48,13 +54,7 @@ export default function DashboardScreen({ navigation }) {
   );
 
   function openTemplatePicker() {
-    navigation.navigate('TemplateSelect', {
-      activeTemplateId: template?.id,
-      onSelect: async (chosen) => {
-        setTemplate(chosen);
-        await loadTargetsFor(chosen);
-      },
-    });
+    navigation.navigate('TemplateSelect', { activeTemplateId: template?.id });
   }
 
   if (loading || !template) {
@@ -87,20 +87,23 @@ export default function DashboardScreen({ navigation }) {
 
       {targets.map(({ exercise, lastSession, suggestion }) => (
         <Card key={exercise.id} style={{ marginBottom: spacing.sm }}>
-          <Text style={styles.exerciseName}>{exercise.emoji} {exercise.name}</Text>
+          <View style={styles.exerciseHeader}>
+            <MuscleIcon equipment={exercise.equipment} size={22} />
+            <Text style={styles.exerciseName}>{exercise.name}</Text>
+          </View>
           <View style={styles.row}>
             <View>
               <Text style={styles.label}>Last</Text>
               <Text style={styles.value}>
                 {lastSession
-                  ? `${Math.max(...lastSession.sets.map((s) => s.weight))}kg × ${lastSession.sets[0].reps}`
+                  ? `${formatWeight(Math.max(...lastSession.sets.map((s) => s.weight)), unit)} × ${lastSession.sets[0].reps}`
                   : '—'}
               </Text>
             </View>
             <View>
               <Text style={styles.label}>Today's Goal</Text>
               <Text style={[styles.value, { color: colors.accent }]}>
-                {suggestion.weight ? `${suggestion.weight}kg × ${suggestion.reps}` : 'Log first set'}
+                {suggestion.weight ? `${formatWeight(suggestion.weight, unit)} × ${suggestion.reps}` : 'Log first set'}
               </Text>
             </View>
           </View>
@@ -112,6 +115,11 @@ export default function DashboardScreen({ navigation }) {
         disabled={targets.length === 0}
         style={{ marginTop: spacing.md }}
         onPress={() => navigation.navigate('WorkoutLogger', { template })}
+      />
+      <PrimaryButton
+        title="Edit Workout"
+        style={{ marginTop: spacing.sm, backgroundColor: colors.cardAlt }}
+        onPress={openTemplatePicker}
       />
     </ScrollView>
   );
@@ -132,7 +140,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   changeBtnText: { color: colors.text, fontSize: 12, fontWeight: '700' },
-  exerciseName: { color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: spacing.sm },
+  exerciseHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  exerciseName: { color: colors.text, fontSize: 17, fontWeight: '700' },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   label: { color: colors.muted, fontSize: 12, fontWeight: '600', marginBottom: 2 },
   value: { color: colors.text, fontSize: 18, fontWeight: '800' },

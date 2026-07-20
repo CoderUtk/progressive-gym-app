@@ -6,7 +6,7 @@
 // - Missed target on some sets -> repeat same weight
 // - Missed target twice in a row -> suggest a small deload (~10%)
 
-export function suggestNextTarget(pastSessions, targetReps = 8) {
+export function suggestNextTarget(pastSessions, targetReps = 8, increment = 2.5) {
   if (!pastSessions || pastSessions.length === 0) {
     return { weight: null, reps: targetReps, note: 'No history yet — log your first set!' };
   }
@@ -22,21 +22,25 @@ export function suggestNextTarget(pastSessions, targetReps = 8) {
     secondLast && !secondLast.sets.every((s) => s.reps >= targetReps);
 
   if (missedLast && missedSecondLast) {
-    const deload = round(lastTopWeight * 0.9);
+    const deload = roundToIncrement(lastTopWeight * 0.9, increment);
     return { weight: deload, reps: targetReps, note: 'Missed target twice — slight deload recommended.' };
   }
 
   if (missedLast) {
-    return { weight: lastTopWeight, reps: targetReps, note: 'Repeat this weight and aim to hit all reps.' };
+    return { weight: roundToIncrement(lastTopWeight, increment), reps: targetReps, note: 'Repeat this weight and aim to hit all reps.' };
   }
 
-  const increase = lastTopWeight < 20 ? 1.25 : lastTopWeight * 0.035;
-  const nextWeight = round(lastTopWeight + increase);
+  const rawIncrease = lastTopWeight < 20 ? increment : Math.max(increment, lastTopWeight * 0.035);
+  const nextWeight = roundToIncrement(lastTopWeight + rawIncrease, increment);
   return { weight: nextWeight, reps: targetReps, note: 'All sets hit — increase the weight.' };
 }
 
-function round(n) {
-  return Math.round(n * 4) / 4; // round to nearest 0.25
+// Rounds to the nearest multiple of the gym's smallest available plate
+// increment (e.g. 1.25kg, 2.5kg, 5kg) so suggested targets are always
+// loadable, instead of odd fractional numbers like 0.75kg.
+export function roundToIncrement(n, increment = 2.5) {
+  if (!increment || increment <= 0) increment = 2.5;
+  return Math.round(n / increment) * increment;
 }
 
 export function detectPRs(pastSessions, newSets) {

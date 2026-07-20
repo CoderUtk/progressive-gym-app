@@ -3,7 +3,8 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Card } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
 import { getExerciseById } from '../data/exercises';
-import { getWorkoutsForExercise } from '../utils/storage';
+import { getWorkoutsForExercise, getWeightUnit } from '../utils/storage';
+import { formatWeight } from '../utils/units';
 
 function daysAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -17,10 +18,14 @@ export default function ExerciseHistoryScreen({ route, navigation }) {
   const { exerciseId } = route.params;
   const exercise = getExerciseById(exerciseId);
   const [sessions, setSessions] = useState([]);
+  const [unit, setUnit] = useState('kg');
 
   useEffect(() => {
     navigation.setOptions({ title: exercise.name });
-    getWorkoutsForExercise(exerciseId).then(setSessions);
+    Promise.all([getWorkoutsForExercise(exerciseId), getWeightUnit()]).then(([s, u]) => {
+      setSessions(s);
+      setUnit(u);
+    });
   }, []);
 
   const bestWeight = sessions.length
@@ -38,8 +43,8 @@ export default function ExerciseHistoryScreen({ route, navigation }) {
           <Stat label="Total Sessions" value={String(sessions.length)} />
         </View>
         <View style={styles.statsRow}>
-          <Stat label="Best Ever" value={bestSet ? `${bestSet.weight}kg × ${bestSet.reps}` : '—'} accent />
-          <Stat label="Max Weight" value={bestWeight ? `${bestWeight}kg` : '—'} />
+          <Stat label="Best Ever" value={bestSet ? `${formatWeight(bestSet.weight, unit)} × ${bestSet.reps}` : '—'} accent />
+          <Stat label="Max Weight" value={bestWeight ? formatWeight(bestWeight, unit) : '—'} />
         </View>
       </Card>
 
@@ -49,7 +54,7 @@ export default function ExerciseHistoryScreen({ route, navigation }) {
         <Card key={i} style={{ marginBottom: spacing.sm }}>
           <Text style={styles.dateLabel}>{new Date(s.date).toDateString()} · {daysAgo(s.date)}</Text>
           {s.sets.map((set, j) => (
-            <Text key={j} style={styles.setLine}>{set.weight}kg × {set.reps}</Text>
+            <Text key={j} style={styles.setLine}>{formatWeight(set.weight, unit)} × {set.reps}</Text>
           ))}
         </Card>
       ))}

@@ -4,7 +4,21 @@ const KEYS = {
   WORKOUTS: 'progressive:workouts', // array of completed workout sessions
   TEMPLATES: 'progressive:templates',
   ACTIVE_TEMPLATE: 'progressive:activeTemplateId',
+  PROFILE: 'progressive:profile',
+  HAS_SEEN_ONBOARDING: 'progressive:hasSeenOnboarding',
+  WEIGHT_UNIT: 'progressive:weightUnit',
 };
+
+// App-wide display unit — 'kg' or 'lb'. Everything is stored internally in
+// kg regardless of this setting; screens convert for display only.
+export async function getWeightUnit() {
+  const raw = await AsyncStorage.getItem(KEYS.WEIGHT_UNIT);
+  return raw === 'lb' ? 'lb' : 'kg';
+}
+
+export async function setWeightUnit(unit) {
+  await AsyncStorage.setItem(KEYS.WEIGHT_UNIT, unit === 'lb' ? 'lb' : 'kg');
+}
 
 // Built-in starter templates. Users can edit these (which forks them into
 // storage) or create brand new custom ones.
@@ -78,34 +92,36 @@ export async function getWorkoutsForExercise(exerciseId) {
   return out.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+export async function getWorkoutDates() {
+  const all = await getWorkouts();
+  return all.map((w) => new Date(w.date).toISOString().slice(0, 10));
+}
+
 export async function clearAllData() {
   await AsyncStorage.multiRemove(Object.values(KEYS));
 }
 
+export async function saveProfile(profile) {
+  await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
+  return profile;
+}
+
+export async function getProfile() {
+  const raw = await AsyncStorage.getItem(KEYS.PROFILE);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export async function setHasSeenOnboarding(value = true) {
+  await AsyncStorage.setItem(KEYS.HAS_SEEN_ONBOARDING, value ? 'true' : 'false');
+}
+
+export async function hasSeenOnboarding() {
+  const raw = await AsyncStorage.getItem(KEYS.HAS_SEEN_ONBOARDING);
+  return raw === 'true';
+}
+
+// Kept as a no-op so older screens that still call it don't break; the app
+// no longer auto-seeds demo workouts — every new profile starts at zero.
 export async function seedIfEmpty() {
-  const existing = await getWorkouts();
-  if (existing.length > 0) return;
-  const now = Date.now();
-  const day = 86400000;
-  const demo = [
-    {
-      id: 'demo1',
-      date: new Date(now - 9 * day).toISOString(),
-      name: 'Push Day',
-      exercises: [
-        { exerciseId: 'bench-press', sets: [{ weight: 65, reps: 9 }, { weight: 65, reps: 8 }, { weight: 60, reps: 10 }] },
-        { exerciseId: 'incline-db-press', sets: [{ weight: 20, reps: 10 }, { weight: 20, reps: 9 }] },
-      ],
-    },
-    {
-      id: 'demo2',
-      date: new Date(now - 6 * day).toISOString(),
-      name: 'Push Day',
-      exercises: [
-        { exerciseId: 'bench-press', sets: [{ weight: 70, reps: 8 }, { weight: 70, reps: 8 }, { weight: 65, reps: 9 }] },
-        { exerciseId: 'incline-db-press', sets: [{ weight: 22.5, reps: 10 }, { weight: 22.5, reps: 8 }] },
-      ],
-    },
-  ];
-  await AsyncStorage.setItem(KEYS.WORKOUTS, JSON.stringify(demo));
+  return;
 }
