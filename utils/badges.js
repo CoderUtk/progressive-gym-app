@@ -1,9 +1,11 @@
 import { detectPRs } from './progressiveOverload';
+import { volumeForSet } from './setSchema';
+import { getExerciseById } from '../data/exercises';
 
 // Walks every logged workout in chronological order and tallies totals used
 // for the profile screen and badge unlocking. Everything starts at zero for
 // a brand-new profile — nothing here is seeded or assumed.
-export function computeStats(workouts) {
+export function computeStats(workouts, bodyweightKg = 70) {
   const sorted = [...workouts].sort((a, b) => new Date(a.date) - new Date(b.date));
   const totalWorkouts = sorted.length;
   const totalSets = sorted.reduce(
@@ -12,7 +14,10 @@ export function computeStats(workouts) {
   );
   const totalWeight = sorted.reduce(
     (sum, w) =>
-      sum + w.exercises.reduce((s, e) => s + e.sets.reduce((ss, x) => ss + x.weight * x.reps, 0), 0),
+      sum + w.exercises.reduce((s, e) => {
+        const exercise = getExerciseById(e.exerciseId);
+        return s + e.sets.reduce((ss, x) => ss + volumeForSet(exercise, x, bodyweightKg), 0);
+      }, 0),
     0
   );
 
@@ -21,7 +26,9 @@ export function computeStats(workouts) {
   sorted.forEach((w) => {
     w.exercises.forEach((ex) => {
       const hist = historyByExercise[ex.exerciseId] || [];
-      totalPRs += detectPRs(hist, ex.sets).length;
+      const exercise = getExerciseById(ex.exerciseId);
+      const trackingType = exercise?.tracking_type || 'WEIGHT_REPS';
+      totalPRs += detectPRs(hist, ex.sets, trackingType).length;
       historyByExercise[ex.exerciseId] = [{ date: w.date, sets: ex.sets }, ...hist];
     });
   });

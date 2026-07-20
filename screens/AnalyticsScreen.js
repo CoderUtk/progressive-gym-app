@@ -4,9 +4,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Card, PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
 import { getWorkoutDates, getWorkouts, getWeightUnit } from '../utils/storage';
-import { formatWeight } from '../utils/units';
+import { formatWeight, formatVolume } from '../utils/units';
+import { volumeForSet } from '../utils/setSchema';
+import { getExerciseById } from '../data/exercises';
+import { getProfile } from '../utils/storage';
 import WorkoutCalendar from '../components/WorkoutCalendar';
 import VolumeLineChart from '../components/VolumeLineChart';
+import WeeklyVolumeCard from '../components/WeeklyVolumeCard';
 
 function shortDate(iso) {
   const d = new Date(iso);
@@ -38,13 +42,15 @@ export default function AnalyticsScreen({ navigation }) {
   const [workoutDates, setWorkoutDates] = useState([]);
   const [showScoreInfo, setShowScoreInfo] = useState(false);
   const [unit, setUnit] = useState('kg');
+  const [bodyweight, setBodyweight] = useState(70);
 
   useFocusEffect(
     useCallback(() => {
-      Promise.all([getWorkouts(), getWorkoutDates(), getWeightUnit()]).then(([w, dates, weightUnit]) => {
+      Promise.all([getWorkouts(), getWorkoutDates(), getWeightUnit(), getProfile()]).then(([w, dates, weightUnit, prof]) => {
         setWorkouts(w.sort((a, b) => new Date(a.date) - new Date(b.date)));
         setWorkoutDates(dates);
         setUnit(weightUnit);
+        if (prof?.weight) setBodyweight(prof.weight);
       });
     }, [])
   );
@@ -60,10 +66,10 @@ export default function AnalyticsScreen({ navigation }) {
   const volumeByWorkout = workouts.map((w) => ({
     date: w.date,
     name: w.name,
-    volume: w.exercises.reduce(
-      (sum, e) => sum + e.sets.reduce((s, x) => s + x.weight * x.reps, 0),
-      0
-    ),
+    volume: w.exercises.reduce((sum, e) => {
+      const exercise = getExerciseById(e.exerciseId);
+      return sum + (e.sets || []).reduce((s, x) => s + volumeForSet(exercise, x, bodyweight), 0);
+    }, 0),
   }));
 
   const totalWeightLifted = volumeByWorkout.reduce((a, w) => a + w.volume, 0);
@@ -75,12 +81,16 @@ export default function AnalyticsScreen({ navigation }) {
   const exerciseIds = [...new Set(workouts.flatMap((w) => w.exercises.map((e) => e.exerciseId)))];
   let improved = 0, maintained = 0, declined = 0;
   exerciseIds.forEach((id) => {
+    // Progress trend is only meaningful for weighted lifts — cardio/timed/
+    // bodyweight compare on different axes and would poison the score.
+    const exercise = getExerciseById(id);
+    if (!exercise || exercise.tracking_type !== 'WEIGHT_REPS') return;
     const sessions = workouts
       .filter((w) => w.exercises.some((e) => e.exerciseId === id))
       .map((w) => w.exercises.find((e) => e.exerciseId === id));
     if (sessions.length < 2) { maintained++; return; }
-    const first = Math.max(...sessions[0].sets.map((s) => s.weight));
-    const last = Math.max(...sessions[sessions.length - 1].sets.map((s) => s.weight));
+    const first = Math.max(...sessions[0].sets.map((s) => s.weight || 0));
+    const last = Math.max(...sessions[sessions.length - 1].sets.map((s) => s.weight || 0));
     if (last > first) improved++;
     else if (last < first) declined++;
     else maintained++;
@@ -112,7 +122,7 @@ export default function AnalyticsScreen({ navigation }) {
       <View style={styles.statsGrid}>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Total Weight Lifted</Text>
-          <Text style={styles.statValue}>{formatWeight(totalWeightLifted, unit)}</Text>
+          <Text style={styles.statValue}>{formatVolume(totalWeightLifted, unit)}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Total Sets</Text>
@@ -131,6 +141,8 @@ export default function AnalyticsScreen({ navigation }) {
           <Text style={styles.chartHint}>Each point is one logged workout, most recent on the right.</Text>
         </Card>
       )}
+
+      <WeeklyVolumeCard workouts={workouts} />
 
       <Card style={{ marginTop: spacing.md }}>
         <Text style={styles.chartTitle}>Workout Calendar</Text>

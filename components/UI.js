@@ -24,6 +24,22 @@ export function PrimaryButton({ title, onPress, style, disabled, variant = 'prim
       </Pressable>
     );
   }
+  if (variant === 'outline') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [
+          styles.outlineBtn,
+          disabled && { opacity: 0.4 },
+          pressed && !disabled && { opacity: 0.8 },
+          style,
+        ]}
+      >
+        <Text style={styles.outlineBtnText}>{title}</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
@@ -133,6 +149,19 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: colors.text,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  outlineBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 16,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  outlineBtnText: {
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 16,
   },

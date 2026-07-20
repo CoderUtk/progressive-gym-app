@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
 import { getProfile } from '../utils/storage';
@@ -14,7 +14,10 @@ export default function ProfileSummaryScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.checkmark}>✅</Text>
+        <View style={styles.logoWrap}>
+          <View style={styles.logoGlow} />
+          <Image source={require('../assets/icon.png')} style={styles.logo} />
+        </View>
         <Text style={styles.title}>You're all set, {profile?.name || 'there'}!</Text>
         <Text style={styles.subtitle}>Here's what we've got so far.</Text>
 
@@ -26,10 +29,11 @@ export default function ProfileSummaryScreen({ navigation }) {
         </View>
 
         <Text style={styles.hint}>
-          You can update any of this later from your Profile tab. Next, pick a workout to start with.
+          You can update any of this later from your Profile tab, and pick a
+          workout whenever you're ready from the Dashboard.
         </Text>
 
-        <PrimaryButton title="Choose Today's Workout" onPress={() => navigation.replace('DailyPlan')} />
+        <PrimaryButton title="Go to Dashboard" onPress={() => navigation.replace('Home')} />
       </View>
     </View>
   );
@@ -47,6 +51,15 @@ function Row({ label, value, last }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center' },
   content: { padding: spacing.lg },
+  logoWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md, height: 96 },
+  logoGlow: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(62, 224, 158, 0.2)',
+  },
+  logo: { width: 64, height: 64, borderRadius: 16 },
   checkmark: { fontSize: 40, textAlign: 'center', marginBottom: spacing.sm },
   title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: spacing.xs },
   subtitle: { color: colors.muted, fontSize: 14, textAlign: 'center', marginBottom: spacing.lg },

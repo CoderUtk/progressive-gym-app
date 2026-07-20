@@ -8,7 +8,25 @@ const KEYS = {
   HAS_SEEN_ONBOARDING: 'progressive:hasSeenOnboarding',
   WEIGHT_UNIT: 'progressive:weightUnit',
   PLATE_INCREMENT: 'progressive:plateIncrement',
+  GOOGLE_ACCOUNT: 'progressive:googleAccount',
+  EXERCISE_NOTES: 'progressive:exerciseNotes',
 };
+
+// Per-exercise machine-setup memo (e.g. "Seat height 3", "Green band"). Keyed
+// by exerciseId so it re-populates automatically next session.
+export async function getExerciseNotes() {
+  const raw = await AsyncStorage.getItem(KEYS.EXERCISE_NOTES);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export async function setExerciseNote(exerciseId, note) {
+  const notes = await getExerciseNotes();
+  const trimmed = (note || '').trim();
+  if (trimmed) notes[exerciseId] = trimmed;
+  else delete notes[exerciseId];
+  await AsyncStorage.setItem(KEYS.EXERCISE_NOTES, JSON.stringify(notes));
+  return notes;
+}
 
 // App-wide display unit — 'kg' or 'lb'. Everything is stored internally in
 // kg regardless of this setting; screens convert for display only.
@@ -34,14 +52,30 @@ export async function setPlateIncrement(value) {
   await AsyncStorage.setItem(KEYS.PLATE_INCREMENT, String(value));
 }
 
+// Stores the signed-in Google account's basic profile (name/email/picture)
+// plus the access token needed for Drive sync calls. The token is short-
+// lived, so a stale one just means the next sync prompts a re-connect.
+export async function getGoogleAccount() {
+  const raw = await AsyncStorage.getItem(KEYS.GOOGLE_ACCOUNT);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export async function setGoogleAccount(account) {
+  await AsyncStorage.setItem(KEYS.GOOGLE_ACCOUNT, JSON.stringify(account));
+}
+
+export async function clearGoogleAccount() {
+  await AsyncStorage.removeItem(KEYS.GOOGLE_ACCOUNT);
+}
+
 // Built-in starter templates. Users can edit these (which forks them into
 // storage) or create brand new custom ones.
 export const DEFAULT_TEMPLATES = [
   { id: 'push-day', name: 'Push Day', exerciseIds: ['bench-press', 'incline-db-press', 'shoulder-press'] },
   { id: 'pull-day', name: 'Pull Day', exerciseIds: ['deadlift', 'lat-pulldown', 'pull-up', 'bicep-curl'] },
   { id: 'leg-day', name: 'Leg Day', exerciseIds: ['squat', 'leg-press'] },
-  { id: 'upper', name: 'Upper', exerciseIds: ['bench-press', 'lat-pulldown', 'shoulder-press', 'bicep-curl'] },
-  { id: 'lower', name: 'Lower', exerciseIds: ['squat', 'deadlift', 'leg-press'] },
+  { id: 'upper', name: 'Upper Body', exerciseIds: ['bench-press', 'lat-pulldown', 'shoulder-press', 'bicep-curl'] },
+  { id: 'lower', name: 'Lower Body', exerciseIds: ['squat', 'deadlift', 'leg-press'] },
 ];
 
 export async function getTemplates() {
@@ -118,6 +152,15 @@ export async function clearAllData() {
 export async function saveProfile(profile) {
   await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
   return profile;
+}
+
+// Partial merge — used for single-field updates (e.g. avatarUri) so a picker
+// callback doesn't have to know or re-supply the rest of the profile.
+export async function updateProfile(patch) {
+  const current = await getProfile();
+  const next = { ...(current || {}), ...patch };
+  await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(next));
+  return next;
 }
 
 export async function getProfile() {

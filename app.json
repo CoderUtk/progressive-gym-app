@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0D0F14",
+    "scheme": "progressiveapp",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -27,6 +28,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "googleClientId": "PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE",
+      "eas": {
+        "projectId": "cfa38db8-94fb-4e28-9987-980ccb6de202"
+      }
     }
   }
 }

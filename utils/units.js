@@ -16,9 +16,30 @@ export function displayWeight(kg, unit) {
   return Math.round(val * 100) / 100;
 }
 
-export function formatWeight(kg, unit) {
+// Snap a display value to the nearest loadable plate step. Prevents oddities
+// like "20.8kg" leaking through after a unit conversion or from older data
+// that predates per-set rounding.
+function snapToIncrement(val, unit, increment) {
+  const step = increment != null && increment > 0
+    ? increment
+    : (unit === 'lb' ? 1 : 0.5);
+  return Math.round(val / step) * step;
+}
+
+// Aggregate volume (e.g. "total weight lifted") is always shown as a clean
+// integer — never "15,751.3 kg" — because a decimal on a number this large is
+// noise, not signal.
+export function formatVolume(kg, unit) {
+  if (kg == null || Number.isNaN(kg)) return '—';
+  const val = unit === 'lb' ? kgToLb(kg) : kg;
+  return `${Math.round(val).toLocaleString()}${unit}`;
+}
+
+export function formatWeight(kg, unit, increment) {
   const val = displayWeight(kg, unit);
   if (val == null) return '—';
-  const trimmed = Number.isInteger(val) ? val : Math.round(val * 10) / 10;
-  return `${trimmed.toLocaleString(undefined, { maximumFractionDigits: 1 })}${unit}`;
+  const snapped = snapToIncrement(val, unit, increment);
+  // Two decimals covers 0.25/0.5 plate steps without ever printing junk like "20.8".
+  const trimmed = Number.isInteger(snapped) ? snapped : Math.round(snapped * 100) / 100;
+  return `${trimmed.toLocaleString(undefined, { maximumFractionDigits: 2 })}${unit}`;
 }

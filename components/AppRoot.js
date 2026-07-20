@@ -5,7 +5,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { Feather } from '@expo/vector-icons';
 import DashboardScreen from '../screens/DashboardScreen';
 import WorkoutLoggerScreen from '../screens/WorkoutLoggerScreen';
 import ExerciseLibraryScreen from '../screens/ExerciseLibraryScreen';
@@ -21,14 +23,19 @@ import DayWorkoutScreen from '../screens/DayWorkoutScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AppLogo from './AppLogo';
 import AppHeaderTitle from './AppHeaderTitle';
+import ActiveSessionPill from './ActiveSessionPill';
 import { colors } from '../utils/theme';
 import { hasSeenOnboarding, clearAllData } from '../utils/storage';
+import { WorkoutSessionProvider } from '../utils/workoutSession';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function Icon({ label, focused }) {
-  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>{label}</Text>;
+// Clean minimalist stroke icons (Feather, bundled with Expo) instead of
+// emoji — selected/unselected colors handled by tabBarActiveTintColor /
+// tabBarInactiveTintColor below.
+function TabIcon({ name, color }) {
+  return <Feather name={name} size={22} color={color} />;
 }
 
 // Shared across both navigators so the logo + "name · date" line shows up
@@ -49,26 +56,26 @@ function HomeTabs() {
       screenOptions={{
         ...sharedHeaderOptions,
         tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.border },
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarActiveTintColor: '#3EE09E',
+        tabBarInactiveTintColor: '#64748B',
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={({ navigation }) => ({
-          tabBarIcon: ({ focused }) => <Icon label="🏠" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="home" color={color} />,
           title: 'Progressive',
           headerRight: () => (
-            <Pressable onPress={() => navigation.navigate('Settings')} style={{ paddingHorizontal: 8 }}>
-              <Text style={{ fontSize: 18 }}>⚙️</Text>
+            <Pressable onPress={() => navigation.navigate('Settings')} style={{ paddingHorizontal: 12 }}>
+              <Feather name="settings" size={20} color={colors.text} />
             </Pressable>
           ),
         })}
       />
-      <Tab.Screen name="Exercises" component={ExerciseLibraryScreen} options={{ tabBarIcon: ({ focused }) => <Icon label="🔍" focused={focused} />, title: 'Exercises' }} />
-      <Tab.Screen name="Analytics" component={AnalyticsScreen} options={{ tabBarIcon: ({ focused }) => <Icon label="📈" focused={focused} />, title: 'Analytics' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ focused }) => <Icon label="👤" focused={focused} />, title: 'Profile' }} />
+      <Tab.Screen name="Exercises" component={ExerciseLibraryScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="search" color={color} />, title: 'Exercises' }} />
+      <Tab.Screen name="Analytics" component={AnalyticsScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="bar-chart-2" color={color} />, title: 'Analytics' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="user" color={color} />, title: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -89,27 +96,34 @@ export default function AppRoot() {
 
   if (initialRoute === 'Loading') {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={colors.accent} size="large" />
-      </View>
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color={colors.accent} size="large" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="light" />
-      <Stack.Navigator screenOptions={sharedHeaderOptions}>
-        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="ProfileSummary" component={ProfileSummaryScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="DailyPlan" component={DailyPlanScreen} options={{ title: 'Choose Workout' }} />
-        <Stack.Screen name="Home" component={HomeTabs} options={{ headerShown: false }} />
-        <Stack.Screen name="WorkoutLogger" component={WorkoutLoggerScreen} options={{ title: 'Log Workout' }} />
-        <Stack.Screen name="ExerciseHistory" component={ExerciseHistoryScreen} options={{ title: 'Exercise History' }} />
-        <Stack.Screen name="TemplateSelect" component={TemplateSelectScreen} options={{ title: "Today's Workout" }} />
-        <Stack.Screen name="ExercisePicker" component={ExercisePickerScreen} options={{ title: 'Select Exercises' }} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-        <Stack.Screen name="DayWorkout" component={DayWorkoutScreen} options={{ title: 'Workout History' }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <WorkoutSessionProvider>
+        <NavigationContainer>
+          <StatusBar style="light" />
+          <Stack.Navigator screenOptions={sharedHeaderOptions}>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ProfileSummary" component={ProfileSummaryScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="DailyPlan" component={DailyPlanScreen} options={{ title: 'Choose Workout' }} />
+            <Stack.Screen name="Home" component={HomeTabs} options={{ headerShown: false }} />
+            <Stack.Screen name="WorkoutLogger" component={WorkoutLoggerScreen} options={{ title: 'Log Workout' }} />
+            <Stack.Screen name="ExerciseHistory" component={ExerciseHistoryScreen} options={{ title: 'Exercise History' }} />
+            <Stack.Screen name="TemplateSelect" component={TemplateSelectScreen} options={{ title: 'My Routines' }} />
+            <Stack.Screen name="ExercisePicker" component={ExercisePickerScreen} options={{ title: 'Select Exercises' }} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+            <Stack.Screen name="DayWorkout" component={DayWorkoutScreen} options={{ title: 'Workout History' }} />
+          </Stack.Navigator>
+          <ActiveSessionPill />
+        </NavigationContainer>
+      </WorkoutSessionProvider>
+    </SafeAreaProvider>
   );
 }

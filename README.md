@@ -130,3 +130,36 @@ privacy policy URL, screenshots, and a content rating questionnaire ready.
    in `WorkoutLoggerScreen.js`.
 3. **Cloud sync** — replace AsyncStorage calls with API calls once you have
    a backend; the storage.js interface is designed for a drop-in swap.
+
+## Google Account Sync
+
+The app can back up your data to your own private Google Drive storage (an
+`appDataFolder` space Google gives each app — not visible in your regular
+Drive, not shared with anyone). This requires a one-time setup by whoever
+builds the app, because Google requires a real registered OAuth client —
+there's no way around this step.
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → create
+   a project (or use an existing one).
+2. **APIs & Services → Library** → enable the **Google Drive API**.
+3. **APIs & Services → OAuth consent screen** → configure it (External is
+   fine for testing with your own account; add the `drive.appdata` scope).
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+   - For Expo Go / development: choose **Web application**, and add
+     `https://auth.expo.io/@your-expo-username/progressive` as an
+     authorized redirect URI.
+   - For a standalone build (EAS): also create an **Android** and/or
+     **iOS** OAuth client, using the `scheme` from `app.json`
+     (`progressiveapp://`) as the redirect.
+5. Copy the resulting **Client ID** into `app.json` →
+   `expo.extra.googleClientId`.
+
+Until that's filled in, Settings will show "Google sign-in isn't configured
+for this build yet" instead of a broken sign-in button — this is expected
+on a fresh clone of the project.
+
+Once configured, tapping **Connect Google Account** in Settings signs the
+user in, checks Drive for an existing backup and restores it if found, and
+exposes a **Back Up Now** button to push the current local data up. Sync is
+manual (not automatic on every save) to keep things predictable and avoid
+surprise API calls.

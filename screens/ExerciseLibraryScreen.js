@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Card, Pill } from '../components/UI';
 import MuscleIcon from '../components/MuscleIcon';
 import { colors, spacing } from '../utils/theme';
@@ -25,19 +25,18 @@ export default function ExerciseLibraryScreen({ navigation }) {
         onChangeText={setQuery}
       />
 
-      <FlatList
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={MUSCLE_GROUPS}
-        keyExtractor={(m) => m}
-        style={{ flexGrow: 0, marginBottom: spacing.sm }}
-        contentContainerStyle={{ gap: spacing.xs, paddingVertical: spacing.xs }}
-        renderItem={({ item }) => (
-          <Pressable onPress={() => setMuscleFilter(muscleFilter === item ? null : item)}>
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterRow}
+      >
+        {MUSCLE_GROUPS.map((item) => (
+          <Pressable key={item} onPress={() => setMuscleFilter(muscleFilter === item ? null : item)}>
             <Pill label={item} tone={muscleFilter === item ? 'accent' : 'default'} />
           </Pressable>
-        )}
-      />
+        ))}
+      </ScrollView>
 
       <FlatList
         data={results}
@@ -49,8 +48,8 @@ export default function ExerciseLibraryScreen({ navigation }) {
               <View style={styles.iconWrap}>
                 <MuscleIcon equipment={item.equipment} size={26} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.exName}>{item.name}</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.exName} numberOfLines={2}>{item.name}</Text>
                 <Text style={styles.exMeta}>{item.muscle} · {item.equipment}</Text>
               </View>
             </Card>
@@ -76,7 +75,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.sm,
   },
-  exName: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  filterScroll: { flexGrow: 0, marginBottom: spacing.sm, marginTop: 2 },
+  filterRow: { gap: spacing.xs, paddingVertical: 6, paddingRight: spacing.md, alignItems: 'center' },
+  exName: { color: colors.text, fontSize: 16, fontWeight: '700', lineHeight: 20 },
   exMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
   iconWrap: {
     width: 44,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
@@ -59,6 +59,10 @@ export default function WelcomeScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.logoWrap}>
+          <View style={styles.logoGlow} />
+          <Image source={require('../assets/icon.png')} style={styles.logo} />
+        </View>
         <Text style={styles.title}>Welcome to Progressive</Text>
         <Text style={styles.subtitle}>Set up your profile and pick a workout plan for today.</Text>
 
@@ -67,7 +71,7 @@ export default function WelcomeScreen() {
           <TextInput
             style={[styles.input, autofillFix]}
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => setName(text.replace(/[0-9]/g, ''))}
             placeholder="Alex"
             placeholderTextColor={colors.muted}
             autoComplete="off"
@@ -116,6 +120,15 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg },
+  logoWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md, height: 96 },
+  logoGlow: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(62, 224, 158, 0.2)',
+  },
+  logo: { width: 64, height: 64, borderRadius: 16 },
   title: { color: colors.text, fontSize: 30, fontWeight: '800', marginBottom: spacing.xs },
   subtitle: { color: colors.muted, fontSize: 15, marginBottom: spacing.lg },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },

@@ -8,12 +8,24 @@ import { MUSCLE_GROUPS, searchExercises } from '../data/exercises';
 // route.params:
 //   initialSelectedIds: string[]
 //   title: string (optional)
-//   onDone: (ids: string[]) => void   -- called when user taps Save
+//   onDone: (ids: string[]) => void            -- multi-select save
+//   mode: 'single'  (optional)                 -- tap immediately returns via onPick
+//   onPick: (id: string) => void               -- single-select handler
+//   preferMuscle: string (optional)            -- preselect this filter for swap flow
+//   excludeIds: string[] (optional)            -- hide these from the picker
 export default function ExercisePickerScreen({ route, navigation }) {
-  const { initialSelectedIds = [], title = 'Select Exercises', onDone } = route.params;
+  const {
+    initialSelectedIds = [],
+    title = 'Select Exercises',
+    onDone,
+    mode,
+    onPick,
+    preferMuscle = null,
+    excludeIds = [],
+  } = route.params;
   const [selected, setSelected] = useState(new Set(initialSelectedIds));
   const [query, setQuery] = useState('');
-  const [muscleFilter, setMuscleFilter] = useState(null);
+  const [muscleFilter, setMuscleFilter] = useState(preferMuscle);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title });
@@ -22,8 +34,9 @@ export default function ExercisePickerScreen({ route, navigation }) {
   const results = useMemo(() => {
     let list = searchExercises(query);
     if (muscleFilter) list = list.filter((e) => e.muscle === muscleFilter);
+    if (excludeIds.length) list = list.filter((e) => !excludeIds.includes(e.id));
     return list;
-  }, [query, muscleFilter]);
+  }, [query, muscleFilter, excludeIds]);
 
   function toggle(id) {
     setSelected((prev) => {
@@ -68,8 +81,16 @@ export default function ExercisePickerScreen({ route, navigation }) {
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => {
           const isSelected = selected.has(item.id);
+          const handlePress = () => {
+            if (mode === 'single') {
+              onPick && onPick(item.id);
+              navigation.goBack();
+              return;
+            }
+            toggle(item.id);
+          };
           return (
-            <Pressable onPress={() => toggle(item.id)}>
+            <Pressable onPress={handlePress}>
               <Card
                 style={[
                   styles.row,
@@ -92,9 +113,11 @@ export default function ExercisePickerScreen({ route, navigation }) {
         }}
       />
 
-      <View style={styles.footer}>
-        <PrimaryButton title={`Save (${selected.size} selected)`} onPress={save} />
-      </View>
+      {mode !== 'single' && (
+        <View style={styles.footer}>
+          <PrimaryButton title={`Save (${selected.size} selected)`} onPress={save} />
+        </View>
+      )}
     </View>
   );
 }
