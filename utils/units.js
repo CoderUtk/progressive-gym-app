@@ -20,5 +20,5 @@ export function formatWeight(kg, unit) {
   const val = displayWeight(kg, unit);
   if (val == null) return '—';
   const trimmed = Number.isInteger(val) ? val : Math.round(val * 10) / 10;
-  return `${trimmed}${unit}`;
+  return `${trimmed.toLocaleString(undefined, { maximumFractionDigits: 1 })}${unit}`;
 }

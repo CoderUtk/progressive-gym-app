@@ -89,7 +89,7 @@ export default function TemplateSelectScreen({ route, navigation }) {
         renderItem={({ item }) => {
           const isActive = item.id === activeTemplateId;
           return (
-            <Card style={[styles.card, isActive && { borderColor: colors.accent }]}>
+            <Card style={styles.card} active={isActive}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{item.name}</Text>

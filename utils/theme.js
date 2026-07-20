@@ -1,16 +1,37 @@
+// Premium dark-mode token set.
 export const colors = {
-  bg: '#0D0F14',
-  card: '#171A21',
-  cardAlt: '#1E222B',
-  border: '#2A2E38',
-  text: '#F5F6F8',
-  muted: '#8A8F9C',
-  accent: '#4FE0A4',
-  accentDim: '#2C6E52',
+  bg: '#0B0E11',            // Deep midnight, subtle teal tint
+  card: '#151A21',           // Elevated dark slate
+  cardAlt: '#1C222C',        // Secondary elevated surface
+  border: 'rgba(255,255,255,0.08)',
+  borderActive: 'rgba(62,224,158,0.35)',
+  activeTint: 'rgba(62,224,158,0.05)',
+  text: '#FFFFFF',
+  muted: '#94A3B8',          // secondary text / labels
+  mutedDim: '#64748B',       // captions
+  accent: '#3EE09E',         // primary mint
+  accentDim: '#2BB980',      // secondary emerald
+  ctaText: '#0B0E11',
   danger: '#FF5A5F',
   gold: '#F5C542',
 };
 
+// Gradient stops for primary CTAs — used with expo-linear-gradient where
+// available; solid `accent` is the fallback.
+export const gradients = {
+  primaryCTA: [colors.accent, colors.accentDim],
+};
+
+export const shadows = {
+  glow: {
+    shadowColor: colors.accent,
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+};
+
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 
-export const radius = { sm: 8, md: 14, lg: 20, full: 999 };
+export const radius = { sm: 8, md: 14, lg: 16, full: 999 };

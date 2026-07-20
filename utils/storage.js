@@ -7,6 +7,7 @@ const KEYS = {
   PROFILE: 'progressive:profile',
   HAS_SEEN_ONBOARDING: 'progressive:hasSeenOnboarding',
   WEIGHT_UNIT: 'progressive:weightUnit',
+  PLATE_INCREMENT: 'progressive:plateIncrement',
 };
 
 // App-wide display unit — 'kg' or 'lb'. Everything is stored internally in
@@ -18,6 +19,19 @@ export async function getWeightUnit() {
 
 export async function setWeightUnit(unit) {
   await AsyncStorage.setItem(KEYS.WEIGHT_UNIT, unit === 'lb' ? 'lb' : 'kg');
+}
+
+// Smallest available plate increment at the user's gym (kg). Used for
+// barbell/machine/cable steps and target rounding; dumbbells use a fixed
+// pair-jump regardless of this setting (see utils/increments.js).
+export async function getPlateIncrement() {
+  const raw = await AsyncStorage.getItem(KEYS.PLATE_INCREMENT);
+  const val = raw ? Number(raw) : 2.5;
+  return Number.isFinite(val) && val > 0 ? val : 2.5;
+}
+
+export async function setPlateIncrement(value) {
+  await AsyncStorage.setItem(KEYS.PLATE_INCREMENT, String(value));
 }
 
 // Built-in starter templates. Users can edit these (which forks them into

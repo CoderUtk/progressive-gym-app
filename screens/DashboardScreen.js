@@ -10,11 +10,11 @@ import {
   getTemplates,
   getActiveTemplateId,
   getWeightUnit,
+  getPlateIncrement,
 } from '../utils/storage';
 import { suggestNextTarget } from '../utils/progressiveOverload';
 import { formatWeight } from '../utils/units';
-
-const STEP = 1; // fixed increment, irrespective of unit
+import { stepForEquipment } from '../utils/increments';
 
 export default function DashboardScreen({ navigation }) {
   const [template, setTemplate] = useState(null);
@@ -23,14 +23,15 @@ export default function DashboardScreen({ navigation }) {
   const [unit, setUnit] = useState('kg');
 
   const loadTargetsFor = useCallback(async (tmpl) => {
-    const weightUnit = await getWeightUnit();
+    const [weightUnit, increment] = await Promise.all([getWeightUnit(), getPlateIncrement()]);
     setUnit(weightUnit);
     const results = [];
     for (const id of tmpl.exerciseIds) {
       const ex = getExerciseById(id);
       if (!ex) continue;
+      const step = stepForEquipment(ex.equipment, increment);
       const history = await getWorkoutsForExercise(id);
-      const suggestion = suggestNextTarget(history, 8, STEP);
+      const suggestion = suggestNextTarget(history, 8, step);
       const lastSession = history[0];
       results.push({ exercise: ex, lastSession, suggestion });
     }
@@ -118,7 +119,8 @@ export default function DashboardScreen({ navigation }) {
       />
       <PrimaryButton
         title="Edit Workout"
-        style={{ marginTop: spacing.sm, backgroundColor: colors.cardAlt }}
+        variant="secondary"
+        style={{ marginTop: spacing.sm }}
         onPress={openTemplatePicker}
       />
     </ScrollView>

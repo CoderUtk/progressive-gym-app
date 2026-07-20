@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
 import { getProfile } from '../utils/storage';
 
@@ -28,9 +29,7 @@ export default function ProfileSummaryScreen({ navigation }) {
           You can update any of this later from your Profile tab. Next, pick a workout to start with.
         </Text>
 
-        <TouchableOpacity style={styles.button} onPress={() => navigation.replace('DailyPlan')}>
-          <Text style={styles.buttonText}>Choose Today's Workout</Text>
-        </TouchableOpacity>
+        <PrimaryButton title="Choose Today's Workout" onPress={() => navigation.replace('DailyPlan')} />
       </View>
     </View>
   );
@@ -51,7 +50,7 @@ const styles = StyleSheet.create({
   checkmark: { fontSize: 40, textAlign: 'center', marginBottom: spacing.sm },
   title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: spacing.xs },
   subtitle: { color: colors.muted, fontSize: 14, textAlign: 'center', marginBottom: spacing.lg },
-  card: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.md, marginBottom: spacing.lg },
+  card: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.border },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   rowLabel: { color: colors.muted, fontSize: 14, fontWeight: '600' },

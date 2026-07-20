@@ -1,29 +1,62 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, spacing, radius } from '../utils/theme';
+import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, spacing, radius, shadows } from '../utils/theme';
 
-export function Card({ children, style }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Card({ children, style, active }) {
+  return <View style={[styles.card, active && styles.cardActive, style]}>{children}</View>;
 }
 
-export function PrimaryButton({ title, onPress, style, disabled }) {
+export function PrimaryButton({ title, onPress, style, disabled, variant = 'primary' }) {
+  if (variant === 'secondary') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [
+          styles.secondaryBtn,
+          disabled && { opacity: 0.4 },
+          pressed && !disabled && { opacity: 0.8 },
+          style,
+        ]}
+      >
+        <Text style={styles.secondaryBtnText}>{title}</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
-        styles.primaryBtn,
+        styles.primaryBtnWrap,
         disabled && { opacity: 0.4 },
-        pressed && !disabled && { opacity: 0.8 },
+        pressed && !disabled && { opacity: 0.85 },
         style,
       ]}
     >
-      <Text style={styles.primaryBtnText}>{title}</Text>
+      <LinearGradient
+        colors={[colors.accent, colors.accentDim]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.primaryBtnGradient}
+      >
+        <Text style={styles.primaryBtnText}>{title}</Text>
+      </LinearGradient>
     </Pressable>
   );
 }
 
-export function IconStepper({ label, value, unit, onIncrement, onDecrement }) {
+// Value is editable in two ways: the +/- buttons (which respect whatever
+// step the caller passes in), or tapping the number and typing an exact
+// integer directly.
+export function IconStepper({ label, value, unit, onIncrement, onDecrement, onChangeValue }) {
+  function handleTextChange(text) {
+    if (!onChangeValue) return;
+    const digitsOnly = text.replace(/[^0-9]/g, '');
+    onChangeValue(digitsOnly === '' ? 0 : parseInt(digitsOnly, 10));
+  }
+
   return (
     <View style={styles.stepperRow}>
       <Text style={styles.stepperLabel}>{label}</Text>
@@ -31,10 +64,18 @@ export function IconStepper({ label, value, unit, onIncrement, onDecrement }) {
         <Pressable style={styles.stepBtn} onPress={onDecrement}>
           <Text style={styles.stepBtnText}>–</Text>
         </Pressable>
-        <Text style={styles.stepperValue}>
-          {value}
-          <Text style={styles.stepperUnit}> {unit}</Text>
-        </Text>
+        {onChangeValue ? (
+          <TextInput
+            style={styles.stepperInput}
+            value={String(value)}
+            onChangeText={handleTextChange}
+            keyboardType="number-pad"
+            selectTextOnFocus
+          />
+        ) : (
+          <Text style={styles.stepperValue}>{value}</Text>
+        )}
+        <Text style={styles.stepperUnit}>{unit}</Text>
         <Pressable style={styles.stepBtn} onPress={onIncrement}>
           <Text style={styles.stepBtnText}>+</Text>
         </Pressable>
@@ -64,15 +105,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  primaryBtn: {
-    backgroundColor: colors.accent,
+  cardActive: {
+    borderColor: colors.borderActive,
+    backgroundColor: colors.activeTint,
+  },
+  primaryBtnWrap: {
+    borderRadius: radius.md,
+    ...shadows.glow,
+  },
+  primaryBtnGradient: {
     paddingVertical: 16,
     borderRadius: radius.md,
     alignItems: 'center',
   },
   primaryBtnText: {
-    color: colors.bg,
-    fontWeight: '800',
+    color: colors.ctaText,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  secondaryBtn: {
+    backgroundColor: colors.cardAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 16,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  secondaryBtnText: {
+    color: colors.text,
+    fontWeight: '700',
     fontSize: 16,
   },
   stepperRow: {
@@ -82,7 +143,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   stepperLabel: { color: colors.muted, fontSize: 14, fontWeight: '600' },
-  stepperControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  stepperControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   stepBtn: {
     width: 40,
     height: 40,
@@ -94,7 +155,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   stepBtnText: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  stepperValue: { color: colors.text, fontSize: 20, fontWeight: '800', minWidth: 70, textAlign: 'center' },
+  stepperValue: { color: colors.text, fontSize: 20, fontWeight: '800', minWidth: 56, textAlign: 'center' },
+  stepperInput: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    minWidth: 56,
+    textAlign: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderActive,
+    paddingVertical: 2,
+  },
   stepperUnit: { fontSize: 12, color: colors.muted, fontWeight: '600' },
   pill: {
     borderWidth: 1,

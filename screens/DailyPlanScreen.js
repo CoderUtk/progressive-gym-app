@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingTop: spacing.xl },
   title: { color: colors.text, fontSize: 28, fontWeight: '800', marginBottom: spacing.xs },
   subtitle: { color: colors.muted, fontSize: 15, marginBottom: spacing.lg },
-  card: { backgroundColor: colors.card, borderRadius: 14, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center' },
+  card: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   cardTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
   cardMeta: { color: colors.muted, fontSize: 12, marginTop: spacing.xs },
   chevron: { color: colors.muted, fontSize: 26, fontWeight: '700', marginLeft: spacing.sm },

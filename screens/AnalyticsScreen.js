@@ -6,6 +6,7 @@ import { colors, spacing } from '../utils/theme';
 import { getWorkoutDates, getWorkouts, getWeightUnit } from '../utils/storage';
 import { formatWeight } from '../utils/units';
 import WorkoutCalendar from '../components/WorkoutCalendar';
+import VolumeLineChart from '../components/VolumeLineChart';
 
 function shortDate(iso) {
   const d = new Date(iso);
@@ -17,9 +18,9 @@ function shortTime(iso) {
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-// Builds one label per workout using its own logged date. If two or more
-// recent workouts fall on the same calendar day, appends the time so the
-// x-axis doesn't show the same date repeated with no way to tell bars apart.
+// One compact label per workout. If two or more recent workouts fall on the
+// same calendar day, switch those labels to time-only (e.g. "12:31 AM")
+// instead of stacking date+time, which was cramped and overlapping.
 function buildChartLabels(items) {
   const dateCounts = {};
   items.forEach((item) => {
@@ -28,7 +29,7 @@ function buildChartLabels(items) {
   });
   return items.map((item) => {
     const key = shortDate(item.date);
-    return dateCounts[key] > 1 ? `${key}\n${shortTime(item.date)}` : key;
+    return dateCounts[key] > 1 ? shortTime(item.date) : key;
   });
 }
 
@@ -56,7 +57,6 @@ export default function AnalyticsScreen({ navigation }) {
     );
   }
 
-  // Total volume per workout
   const volumeByWorkout = workouts.map((w) => ({
     date: w.date,
     name: w.name,
@@ -72,7 +72,6 @@ export default function AnalyticsScreen({ navigation }) {
     0
   );
 
-  // Progress score: compare each exercise's most recent top weight vs its first recorded top weight
   const exerciseIds = [...new Set(workouts.flatMap((w) => w.exercises.map((e) => e.exerciseId)))];
   let improved = 0, maintained = 0, declined = 0;
   exerciseIds.forEach((id) => {
@@ -90,8 +89,8 @@ export default function AnalyticsScreen({ navigation }) {
   const progressScore = totalTracked ? Math.round((improved / totalTracked) * 100) : 0;
 
   const recentVolumes = volumeByWorkout.slice(-6);
-  const maxVolume = Math.max(...recentVolumes.map((item) => item.volume), 1);
   const chartLabels = buildChartLabels(recentVolumes);
+  const chartPoints = recentVolumes.map((v) => v.volume);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
@@ -117,26 +116,19 @@ export default function AnalyticsScreen({ navigation }) {
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Total Sets</Text>
-          <Text style={styles.statValue}>{totalSets}</Text>
+          <Text style={styles.statValue}>{totalSets.toLocaleString()}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Workouts</Text>
-          <Text style={styles.statValue}>{workouts.length}</Text>
+          <Text style={styles.statValue}>{workouts.length.toLocaleString()}</Text>
         </Card>
       </View>
 
-      {recentVolumes.length > 1 && (
+      {recentVolumes.length > 0 && (
         <Card style={{ marginTop: spacing.md }}>
           <Text style={styles.chartTitle}>Volume Per Workout (recent)</Text>
-          <View style={styles.chartBars}>
-            {recentVolumes.map((item, index) => (
-              <View key={index} style={styles.barColumn}>
-                <View style={[styles.barFill, { height: Math.max(24, (item.volume / maxVolume) * 120) }]} />
-                <Text style={styles.barLabel} numberOfLines={2}>{chartLabels[index]}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={styles.chartHint}>Recent loads are shown in a simple bar chart based on your logged volume.</Text>
+          <VolumeLineChart points={chartPoints} labels={chartLabels} />
+          <Text style={styles.chartHint}>Each point is one logged workout, most recent on the right.</Text>
         </Card>
       )}
 
@@ -188,10 +180,6 @@ const styles = StyleSheet.create({
   statLabel: { color: colors.muted, fontSize: 11, fontWeight: '600', marginBottom: 4, textAlign: 'center' },
   statValue: { color: colors.text, fontSize: 16, fontWeight: '800' },
   chartTitle: { color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm, textTransform: 'uppercase' },
-  chartBars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 150, marginTop: spacing.sm },
-  barColumn: { flex: 1, alignItems: 'center', marginHorizontal: 4 },
-  barFill: { width: '100%', maxWidth: 24, borderRadius: 8, backgroundColor: colors.accent, minHeight: 12 },
-  barLabel: { color: colors.muted, fontSize: 10, marginTop: spacing.xs, textAlign: 'center' },
   chartHint: { color: colors.muted, fontSize: 12, marginTop: spacing.sm },
   calendarHint: { color: colors.muted, fontSize: 11, marginBottom: spacing.sm },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },

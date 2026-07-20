@@ -6,17 +6,22 @@ import { colors, spacing } from '../utils/theme';
 import { getProfile, getWorkouts, getWeightUnit } from '../utils/storage';
 import { computeStats, computeLevel, getBadgeStatus } from '../utils/badges';
 import { formatWeight } from '../utils/units';
+import { estimate1RM, STRENGTH_LIFT_LABELS, computeStrengthTier } from '../utils/strength';
+
+const TIER_TONE = { Elite: 'gold', Advanced: 'accent', Intermediate: 'accent', Novice: 'default' };
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ totalWorkouts: 0, totalSets: 0, totalWeight: 0, totalPRs: 0 });
   const [unit, setUnit] = useState('kg');
+  const [workouts, setWorkouts] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
-      Promise.all([getProfile(), getWorkouts(), getWeightUnit()]).then(([p, workouts, weightUnit]) => {
+      Promise.all([getProfile(), getWorkouts(), getWeightUnit()]).then(([p, w, weightUnit]) => {
         setProfile(p);
-        setStats(computeStats(workouts));
+        setWorkouts(w);
+        setStats(computeStats(w));
         setUnit(weightUnit);
       });
     }, [])
@@ -25,6 +30,25 @@ export default function ProfileScreen() {
   const level = computeLevel(stats.totalWorkouts);
   const badges = getBadgeStatus(stats);
   const earnedBadges = badges.filter((b) => b.earned);
+
+  // Best estimated 1RM per lift, from the heaviest-weight set ever logged.
+  const bestSetByExercise = {};
+  workouts.forEach((w) => {
+    w.exercises.forEach((ex) => {
+      const topSet = [...ex.sets].sort((a, b) => b.weight - a.weight)[0];
+      const current = bestSetByExercise[ex.exerciseId];
+      if (!current || topSet.weight > current.weight) {
+        bestSetByExercise[ex.exerciseId] = topSet;
+      }
+    });
+  });
+
+  const strengthRows = Object.keys(STRENGTH_LIFT_LABELS).map((exerciseId) => {
+    const best = bestSetByExercise[exerciseId];
+    const e1RM = best ? estimate1RM(best.weight, best.reps) : null;
+    const tier = computeStrengthTier(exerciseId, e1RM, profile?.weight);
+    return { exerciseId, label: STRENGTH_LIFT_LABELS[exerciseId], e1RM, tier };
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
@@ -39,21 +63,44 @@ export default function ProfileScreen() {
       <View style={styles.statsGrid}>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Workouts</Text>
-          <Text style={styles.statValue}>{stats.totalWorkouts}</Text>
+          <Text style={styles.statValue}>{stats.totalWorkouts.toLocaleString()}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>Total Sets</Text>
-          <Text style={styles.statValue}>{stats.totalSets}</Text>
+          <Text style={styles.statValue}>{stats.totalSets.toLocaleString()}</Text>
         </Card>
         <Card style={styles.statCard}>
           <Text style={styles.statLabel}>PRs</Text>
-          <Text style={styles.statValue}>{stats.totalPRs}</Text>
+          <Text style={styles.statValue}>{stats.totalPRs.toLocaleString()}</Text>
         </Card>
       </View>
 
       <Card style={{ marginTop: spacing.sm, marginBottom: spacing.md }}>
         <Text style={styles.statLabel}>Total Weight Lifted</Text>
         <Text style={[styles.statValue, { fontSize: 24 }]}>{formatWeight(stats.totalWeight, unit)}</Text>
+      </Card>
+
+      <Text style={styles.sectionLabel}>Strength Tiers</Text>
+      <Text style={styles.helpText}>
+        Estimated 1-rep max (Epley formula) compared to your body weight.
+        General reference points, not a verified standard.
+      </Text>
+      <Card style={{ marginBottom: spacing.md }}>
+        {strengthRows.map((row, i) => (
+          <View key={row.exerciseId} style={[styles.strengthRow, i < strengthRows.length - 1 && styles.strengthRowBorder]}>
+            <View>
+              <Text style={styles.strengthLift}>{row.label}</Text>
+              <Text style={styles.strengthE1RM}>
+                {row.e1RM ? `Est. 1RM: ${formatWeight(row.e1RM, unit)}` : 'Not logged yet'}
+              </Text>
+            </View>
+            {row.tier ? (
+              <Pill label={row.tier.toUpperCase()} tone={TIER_TONE[row.tier]} />
+            ) : (
+              <Text style={styles.strengthMissing}>{profile?.weight ? '—' : 'Set body weight'}</Text>
+            )}
+          </View>
+        ))}
       </Card>
 
       <Text style={styles.sectionLabel}>Badges Earned ({earnedBadges.length}/{badges.length})</Text>
@@ -77,7 +124,13 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, alignItems: 'center' },
   statLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 },
   statValue: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  sectionLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginBottom: spacing.sm },
+  sectionLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginBottom: spacing.xs },
+  helpText: { color: colors.mutedDim, fontSize: 12, marginBottom: spacing.sm, lineHeight: 17 },
+  strengthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
+  strengthRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  strengthLift: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  strengthE1RM: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  strengthMissing: { color: colors.mutedDim, fontSize: 12 },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badgeCard: { width: '31%', alignItems: 'center', paddingVertical: spacing.md },
   badgeLocked: { opacity: 0.6 },

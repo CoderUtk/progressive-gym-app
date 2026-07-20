@@ -38,13 +38,20 @@ export function computeLevel(totalWorkouts) {
 }
 
 export const BADGE_DEFS = [
-  { id: 'first-workout', label: 'First Workout', emoji: '🎬', check: (s) => s.totalWorkouts >= 1 },
+  { id: 'first-workout', label: 'First Workout', emoji: '🏆', check: (s) => s.totalWorkouts >= 1 },
+  { id: 'five-workouts', label: '5 Workouts', emoji: '🎯', check: (s) => s.totalWorkouts >= 5 },
   { id: 'ten-workouts', label: '10 Workouts', emoji: '🏋️', check: (s) => s.totalWorkouts >= 10 },
+  { id: 'thirty-workouts', label: '30 Workouts', emoji: '🔱', check: (s) => s.totalWorkouts >= 30 },
   { id: 'hundred-workouts', label: '100 Workouts', emoji: '💯', check: (s) => s.totalWorkouts >= 100 },
   { id: 'first-pr', label: 'First PR', emoji: '⭐', check: (s) => s.totalPRs >= 1 },
   { id: 'ten-prs', label: '10 PRs', emoji: '🌟', check: (s) => s.totalPRs >= 10 },
+  { id: 'twenty-five-prs', label: '25 PRs', emoji: '🏅', check: (s) => s.totalPRs >= 25 },
   { id: 'hundred-sets', label: '100 Sets Logged', emoji: '🔥', check: (s) => s.totalSets >= 100 },
+  { id: 'five-hundred-sets', label: '500 Sets Logged', emoji: '⚡', check: (s) => s.totalSets >= 500 },
   { id: 'thousand-sets', label: '1000 Sets Logged', emoji: '🚀', check: (s) => s.totalSets >= 1000 },
+  { id: 'ten-thousand-kg', label: '10,000kg Lifted', emoji: '🏔️', check: (s) => s.totalWeight >= 10000 },
+  { id: 'fifty-thousand-kg', label: '50,000kg Lifted', emoji: '🌋', check: (s) => s.totalWeight >= 50000 },
+  { id: 'hundred-thousand-kg', label: '100,000kg Lifted', emoji: '🪐', check: (s) => s.totalWeight >= 100000 },
 ];
 
 export function getBadgeStatus(stats) {

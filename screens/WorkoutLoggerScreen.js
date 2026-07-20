@@ -5,14 +5,12 @@ import { Card, PrimaryButton, IconStepper, Pill } from '../components/UI';
 import MuscleIcon from '../components/MuscleIcon';
 import { colors, spacing } from '../utils/theme';
 import { getExerciseById } from '../data/exercises';
-import { getActiveTemplateId, getTemplates, getWorkoutsForExercise, saveWorkout, getWeightUnit } from '../utils/storage';
+import { getActiveTemplateId, getTemplates, getWorkoutsForExercise, saveWorkout, getWeightUnit, getPlateIncrement } from '../utils/storage';
 import { suggestNextTarget, detectPRs, roundToIncrement } from '../utils/progressiveOverload';
 import { displayWeight, formatWeight, lbToKg } from '../utils/units';
+import { stepForEquipment } from '../utils/increments';
 
 const DEFAULT_WEIGHT_KG = 20;
-// Fixed step size, irrespective of unit: always 1kg or 1lb, whichever is
-// currently displayed. No user-configurable plate increment.
-const STEP = 1;
 
 function toKg(value, unit) {
   return unit === 'lb' ? lbToKg(value) : value;
@@ -26,14 +24,16 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [sessionKey, setSessionKey] = useState(null);
   const [unit, setUnit] = useState('kg');
+  const [plateIncrement, setPlateIncrementState] = useState(2.5);
 
-  async function buildExerciseData(ids) {
+  async function buildExerciseData(ids, increment) {
     const data = [];
     for (const id of ids) {
       const exercise = getExerciseById(id);
       if (!exercise) continue;
+      const step = stepForEquipment(exercise.equipment, increment);
       const history = await getWorkoutsForExercise(id);
-      const suggestion = suggestNextTarget(history, 8, STEP);
+      const suggestion = suggestNextTarget(history, 8, step);
       data.push({ exercise, history, suggestion, loggedSets: [] });
     }
     return data;
@@ -41,8 +41,9 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
 
   useEffect(() => {
     (async () => {
-      const weightUnit = await getWeightUnit();
+      const [weightUnit, increment] = await Promise.all([getWeightUnit(), getPlateIncrement()]);
       setUnit(weightUnit);
+      setPlateIncrementState(increment);
 
       let selectedTemplate = initialTemplate;
       if (!selectedTemplate) {
@@ -57,7 +58,7 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
       }
 
       setTemplate(selectedTemplate);
-      const data = await buildExerciseData(selectedTemplate.exerciseIds);
+      const data = await buildExerciseData(selectedTemplate.exerciseIds, increment);
       setExerciseData(data);
       setActiveIndex(0);
       setSessionKey(`${Date.now()}-${selectedTemplate.id}`);
@@ -76,7 +77,7 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
         const kept = exerciseData.filter((e) => newIds.includes(e.exercise.id));
         const keptIds = kept.map((e) => e.exercise.id);
         const addedIds = newIds.filter((id) => !keptIds.includes(id));
-        const added = await buildExerciseData(addedIds);
+        const added = await buildExerciseData(addedIds, plateIncrement);
         const next = [...kept, ...added];
         setExerciseData(next);
         setActiveIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
@@ -107,6 +108,7 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
   }
 
   const activeEx = exerciseData[activeIndex];
+  const step = stepForEquipment(activeEx.exercise.equipment, plateIncrement);
 
   function logSet() {
     const kgWeight = toKg(current.weight, unit);
@@ -203,8 +205,9 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
           label="Weight"
           value={current.weight}
           unit={unit}
-          onIncrement={() => setCurrent((c) => ({ ...c, weight: roundToIncrement(c.weight + STEP, STEP) }))}
-          onDecrement={() => setCurrent((c) => ({ ...c, weight: roundToIncrement(Math.max(0, c.weight - STEP), STEP) }))}
+          onIncrement={() => setCurrent((c) => ({ ...c, weight: roundToIncrement(c.weight + step, step) }))}
+          onDecrement={() => setCurrent((c) => ({ ...c, weight: roundToIncrement(Math.max(0, c.weight - step), step) }))}
+          onChangeValue={(v) => setCurrent((c) => ({ ...c, weight: Math.max(0, v) }))}
         />
         <IconStepper
           label="Reps"
@@ -212,7 +215,9 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
           unit="reps"
           onIncrement={() => setCurrent((c) => ({ ...c, reps: c.reps + 1 }))}
           onDecrement={() => setCurrent((c) => ({ ...c, reps: Math.max(0, c.reps - 1) }))}
+          onChangeValue={(v) => setCurrent((c) => ({ ...c, reps: Math.max(0, v) }))}
         />
+        <Text style={styles.stepHint}>Step: {step}{unit} for {activeEx.exercise.equipment.toLowerCase()} — or tap the number to type an exact value.</Text>
         <PrimaryButton title="Done — Log Set" onPress={logSet} style={{ marginTop: spacing.sm }} />
       </Card>
 
@@ -227,7 +232,7 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
 
       <PrimaryButton
         title={activeIndex < exerciseData.length - 1 ? 'Next Exercise' : 'Finish Workout'}
-        style={{ marginTop: spacing.lg, backgroundColor: colors.accent }}
+        style={{ marginTop: spacing.lg }}
         onPress={nextExercise}
       />
     </ScrollView>
@@ -243,4 +248,5 @@ const styles = StyleSheet.create({
   cardHeading: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: spacing.xs },
   historyLine: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 2 },
   noteText: { color: colors.muted, fontSize: 12, marginTop: spacing.xs, fontStyle: 'italic' },
+  stepHint: { color: colors.mutedDim, fontSize: 11, marginTop: spacing.xs },
 });
