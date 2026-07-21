@@ -1,9 +1,19 @@
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import { setGoogleAccount, getGoogleAccount, clearGoogleAccount } from './storage';
 
-WebBrowser.maybeCompleteAuthSession();
+// Lazy, defensive load: if the native module isn't linked in this build,
+// requiring it throws at import time and crashes startup. Guard so the app
+// still boots; Google sync just stays unavailable until the native module
+// is present.
+let AuthSession = null;
+let WebBrowser = null;
+try {
+  AuthSession = require('expo-auth-session');
+  WebBrowser = require('expo-web-browser');
+  WebBrowser.maybeCompleteAuthSession();
+} catch (e) {
+  console.warn('Google sign-in unavailable:', e?.message);
+}
 
 // Set this in app.json under expo.extra.googleClientId (see README's
 // "Google Account Sync" section for how to create one). Without it, sign-in
@@ -23,10 +33,11 @@ const discovery = {
 const SCOPES = ['openid', 'profile', 'https://www.googleapis.com/auth/drive.appdata'];
 
 export function isGoogleSignInConfigured() {
-  return Boolean(CLIENT_ID);
+  return Boolean(CLIENT_ID) && Boolean(AuthSession) && Boolean(WebBrowser);
 }
 
 export function useGoogleAuthRequest() {
+  if (!AuthSession) return [null, null, () => {}];
   const redirectUri = AuthSession.makeRedirectUri();
   return AuthSession.useAuthRequest(
     {
