@@ -1,76 +1,108 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Card, PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
-import { getWeightUnit, setWeightUnit, getPlateIncrement, setPlateIncrement, getGoogleAccount } from '../utils/storage';
-import {
-  useGoogleAuthRequest,
-  isGoogleSignInConfigured,
-  fetchGoogleProfile,
-  storeGoogleAccount,
-  signOutGoogle,
-} from '../utils/googleAuth';
-import { backupToGoogleDrive, restoreFromGoogleDrive } from '../utils/cloudSync';
+import { getWeightUnit, setWeightUnit, getPlateIncrement, setPlateIncrement, clearAllData } from '../utils/storage';
+import { isAuthConfigured, getCurrentSession, onAuthChange, signOut } from '../utils/authClient';
+import { backupToCloud } from '../utils/cloudSync';
 
 const PLATE_OPTIONS = [1.25, 2.5, 5];
 
+function accountLabel(user) {
+  if (!user) return null;
+  if (user.is_anonymous) return 'Anonymous account';
+  return user.email || user.user_metadata?.email || 'Signed in';
+}
+
 export default function SettingsScreen() {
+  const navigation = useNavigation();
   const [unit, setUnit] = useState('kg');
   const [increment, setIncrement] = useState(2.5);
-  const [account, setAccount] = useState(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
-  const [request, response, promptAsync] = useGoogleAuthRequest();
-  const configured = isGoogleSignInConfigured();
+  const [session, setSession] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
+
+  const configured = isAuthConfigured();
 
   useEffect(() => {
     getWeightUnit().then(setUnit);
     getPlateIncrement().then(setIncrement);
-    getGoogleAccount().then(setAccount);
-  }, []);
+    if (!configured) return;
+    getCurrentSession().then(setSession);
+    const off = onAuthChange((s) => setSession(s));
+    return off;
+  }, [configured]);
 
-  useEffect(() => {
-    if (response?.type === 'success' && response.authentication?.accessToken) {
-      handleSignInSuccess(response.authentication.accessToken);
-    }
-  }, [response]);
+  function setStatus(msg, error = false) {
+    setMessage(msg);
+    setIsError(error);
+  }
 
-  async function handleSignInSuccess(accessToken) {
-    setSyncing(true);
-    setSyncMessage('Signing in…');
-    try {
-      const profile = await fetchGoogleProfile(accessToken);
-      const acct = { name: profile.name, email: profile.email, picture: profile.picture, accessToken };
-      await storeGoogleAccount(acct);
-      setAccount(acct);
-      setSyncMessage('Checking for existing backup…');
-      const restored = await restoreFromGoogleDrive(accessToken);
-      setSyncMessage(restored ? 'Restored your data from Google Drive.' : 'Connected. No previous backup found yet.');
-    } catch (err) {
-      setSyncMessage('Something went wrong connecting to Google.');
-    } finally {
-      setSyncing(false);
-    }
+  async function withBusy(fn) {
+    setBusy(true);
+    try { await fn(); } finally { setBusy(false); }
   }
 
   async function handleBackupNow() {
-    if (!account?.accessToken) return;
-    setSyncing(true);
-    setSyncMessage('Backing up to Google Drive…');
-    try {
-      await backupToGoogleDrive(account.accessToken);
-      setSyncMessage('Backup complete.');
-    } catch (err) {
-      setSyncMessage('Backup failed — try reconnecting your account.');
-    } finally {
-      setSyncing(false);
-    }
+    setStatus('Backing up…');
+    await withBusy(async () => {
+      try {
+        await backupToCloud();
+        setStatus('Backup complete.');
+      } catch (e) {
+        setStatus(e?.message || 'Backup failed.', true);
+      }
+    });
   }
 
-  async function handleDisconnect() {
-    await signOutGoogle();
-    setAccount(null);
-    setSyncMessage('');
+  async function handleSignOut() {
+    await withBusy(async () => {
+      // Force a final backup BEFORE signing out. The auto-backup runs on
+      // an 8s debounce, so any recent profile edits (name/age/weight from
+      // the Welcome flow) may not have reached the cloud yet — signing out
+      // + clearing local data would then lose them on next sign-in.
+      setStatus('Backing up before sign-out…');
+      try { await backupToCloud(); } catch (e) { /* proceed even if this fails */ }
+      try {
+        await signOut();
+      } catch (e) { /* ignore */ }
+      // Wipe local data too — otherwise the next signed-in user (or the
+      // same user on another account) would inherit this account's history.
+      await clearAllData();
+      setSession(null);
+      setStatus('');
+      navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+    });
+  }
+
+  function confirm(title, message, onConfirm) {
+    // Alert.alert isn't wired to web on all Expo versions; fall back to
+    // window.confirm so the reset flow is usable in browser too.
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm(`${title}\n\n${message}`)) onConfirm();
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset Everything', style: 'destructive', onPress: onConfirm },
+    ]);
+  }
+
+  async function handleResetAll() {
+    confirm(
+      'Reset all data?',
+      'This wipes every workout, template, profile detail, and custom exercise from this device. If you\'re signed in, your cloud backup remains — signing in again will restore it. Continue?',
+      async () => {
+        await withBusy(async () => {
+          try { await signOut(); } catch (e) { /* ignore */ }
+          await clearAllData();
+          setSession(null);
+          navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+        });
+      }
+    );
   }
 
   async function chooseUnit(value) {
@@ -123,44 +155,45 @@ export default function SettingsScreen() {
         ))}
       </Card>
 
-      <Text style={styles.sectionLabel}>Google Account</Text>
+      <Text style={styles.sectionLabel}>Danger Zone</Text>
       <Text style={styles.helpText}>
-        Connect your Google account to back up your workout data to your own
-        private Google Drive storage (not visible in your regular Drive, and
-        not accessible to anyone but you and this app).
+        Wipe this device's local state — workouts, templates, custom
+        exercises, profile. If you're signed in, your cloud backup is
+        untouched and signing back in restores everything.
       </Text>
+      <Card style={{ marginBottom: spacing.lg }}>
+        <PrimaryButton title="Reset All Data" variant="secondary" onPress={handleResetAll} />
+      </Card>
+
+      <Text style={styles.sectionLabel}>Account</Text>
       <Card>
-        {!configured ? (
-          <Text style={styles.warningText}>
-            Google sign-in isn't configured for this build yet — it needs a
-            Google OAuth client ID set up by the app's developer. See the
-            README's "Google Account Sync" section for setup steps.
-          </Text>
-        ) : account ? (
+        {!configured || !session ? (
           <View>
-            <Text style={styles.accountName}>{account.name}</Text>
-            <Text style={styles.accountEmail}>{account.email}</Text>
-            {syncMessage ? <Text style={styles.syncMessage}>{syncMessage}</Text> : null}
-            {syncing ? (
+            <Text style={styles.helpText}>
+              You're using the app without an account. Data lives only on
+              this device.
+            </Text>
+            <PrimaryButton
+              title="Sign In / Create Account"
+              onPress={() => navigation.navigate('SignIn')}
+            />
+          </View>
+        ) : (
+          <View>
+            <Text style={styles.accountName}>{accountLabel(session.user)}</Text>
+            <Text style={styles.helpText}>
+              Data auto-syncs to your account. Sign out clears this device.
+            </Text>
+            {message ? (
+              <Text style={[styles.status, isError && styles.statusError]}>{message}</Text>
+            ) : null}
+            {busy ? (
               <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.sm }} />
             ) : (
               <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
                 <PrimaryButton title="Back Up Now" onPress={handleBackupNow} />
-                <PrimaryButton title="Disconnect" variant="secondary" onPress={handleDisconnect} />
+                <PrimaryButton title="Sign Out" variant="secondary" onPress={handleSignOut} />
               </View>
-            )}
-          </View>
-        ) : (
-          <View>
-            {syncMessage ? <Text style={styles.syncMessage}>{syncMessage}</Text> : null}
-            {syncing ? (
-              <ActivityIndicator color={colors.accent} />
-            ) : (
-              <PrimaryButton
-                title="Connect Google Account"
-                onPress={() => promptAsync()}
-                disabled={!request}
-              />
             )}
           </View>
         )}
@@ -205,8 +238,7 @@ const styles = StyleSheet.create({
   },
   radioOn: { borderColor: colors.accent },
   radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent },
-  warningText: { color: colors.mutedDim, fontSize: 12, lineHeight: 17 },
-  accountName: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  accountEmail: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  syncMessage: { color: colors.accent, fontSize: 12, marginTop: spacing.sm, fontWeight: '600' },
+  accountName: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: spacing.xs },
+  status: { color: colors.accent, fontSize: 12, fontWeight: '600', marginTop: spacing.sm },
+  statusError: { color: colors.danger },
 });

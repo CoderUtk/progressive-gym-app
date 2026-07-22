@@ -32,6 +32,24 @@ export const shadows = {
   },
 };
 
+// Per-muscle-group tint. Used to color exercise icons so a chest lift feels
+// visually distinct from a back lift at a glance — the icon shape (equipment
+// silhouette) tells you HOW you're doing it, the tint tells you WHAT it hits.
+// Chosen to be readable on the dark card bg without clashing with the accent.
+export const muscleTints = {
+  Chest:     '#F87171', // coral red
+  Back:      '#60A5FA', // sky blue
+  Legs:      '#34D399', // emerald
+  Shoulders: '#A78BFA', // violet
+  Arms:      '#FBBF24', // amber
+  Core:      '#22D3EE', // cyan
+  Cardio:    '#F472B6', // pink
+};
+
+export function muscleTint(muscle) {
+  return muscleTints[muscle] || colors.accent;
+}
+
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 
 export const radius = { sm: 8, md: 14, lg: 16, full: 999 };

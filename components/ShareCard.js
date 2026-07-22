@@ -120,8 +120,8 @@ export default function ShareCard({ profile, session, unit = 'kg', prCount = 0, 
             <Text style={styles.wordmark}>PROGRESSIVE</Text>
           </View>
           <View style={styles.userCluster}>
-            {profile?.avatarUri ? (
-              <Image source={{ uri: profile.avatarUri }} style={styles.avatar} />
+            {profile?.avatarData || profile?.avatarUri ? (
+              <Image source={{ uri: profile.avatarData || profile.avatarUri }} style={styles.avatar} />
             ) : (
               <View style={[styles.avatar, styles.avatarFallback]}>
                 <Feather name="user" size={14} color={CARD.accent} />

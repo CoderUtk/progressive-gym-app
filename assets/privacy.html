@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Progressive — Privacy Policy</title>
+<style>
+  :root { color-scheme: dark; }
+  body { background: #0B0E11; color: #E5E7EB; font: 15px/1.6 -apple-system, system-ui, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { color: #FFFFFF; font-size: 28px; margin: 0 0 4px; }
+  h2 { color: #FFFFFF; font-size: 18px; margin: 32px 0 8px; }
+  p, li { color: #CBD5E1; }
+  a { color: #3EE09E; }
+  .meta { color: #94A3B8; font-size: 13px; margin-bottom: 32px; }
+  ul { padding-left: 20px; }
+  code { background: #151A21; padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+  hr { border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<h1>Progressive Privacy Policy</h1>
+<p class="meta">Last updated: 22 July 2026</p>
+
+<p>
+  Progressive ("the app", "we") is a personal gym workout tracker. This
+  policy explains what data the app collects, how we use it, and the
+  choices you have.
+</p>
+
+<h2>Who runs Progressive</h2>
+<p>
+  Progressive is operated by <strong>Navalo</strong>. Contact:
+  <a href="mailto:utkarshg08@gmail.com">utkarshg08@gmail.com</a>.
+</p>
+
+<h2>Data we collect</h2>
+<ul>
+  <li>
+    <strong>Account information</strong> — if you choose to sign in with
+    Google, we receive your email address, name, and profile picture from
+    Google. If you sign in with email + password, we receive the email
+    address and a hashed password. You may also choose "Continue without
+    account", in which case no identity data is collected.
+  </li>
+  <li>
+    <strong>App activity you create</strong> — the workouts, sets, weights,
+    reps, templates, exercise notes, body weight, plate increment, weight
+    unit preference, avatar photo, and custom exercises you enter in the
+    app. This is your fitness log; it lives on your device by default.
+  </li>
+  <li>
+    <strong>Cloud sync (optional)</strong> — when you are signed in, the
+    app periodically uploads the JSON snapshot of your log to your private
+    per-user row in our database (see next section). Sign out and reset
+    from Settings stops the sync and clears the local copy on your device.
+  </li>
+  <li>
+    <strong>Diagnostic logs</strong> — the app writes local console output
+    for debugging. We do not currently ship a crash-reporting SDK, and we
+    do not receive automatic telemetry from your device.
+  </li>
+</ul>
+
+<h2>Where your data goes</h2>
+<p>
+  We use <strong>Supabase</strong> (<a href="https://supabase.com/privacy">privacy policy</a>)
+  as our backend. Supabase provides authentication and stores your snapshot
+  in a hosted PostgreSQL database with row-level security — your row is
+  readable and writable only by your own signed-in session. Data is
+  encrypted in transit (HTTPS/TLS) and encrypted at rest by Supabase.
+</p>
+<p>
+  Google authentication (if you choose it) is handled by Google under
+  their own privacy policy at <a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.
+</p>
+<p>
+  We do <strong>not</strong> sell your data. We do <strong>not</strong>
+  share it with advertisers. We do <strong>not</strong> use it to train
+  machine-learning models. We do <strong>not</strong> profile you across
+  other services.
+</p>
+
+<h2>Legal basis (for users in the EU / UK)</h2>
+<p>
+  We process your data on the basis of your consent (given by installing
+  the app and signing in) and to perform the contract of providing the
+  fitness-tracking service you signed up for. You may withdraw consent at
+  any time by signing out and resetting your data from Settings.
+</p>
+
+<h2>Retention</h2>
+<p>
+  Local data stays on your device until you tap "Reset All Data" in
+  Settings or uninstall the app. Cloud data stays in your account until
+  you request deletion by emailing
+  <a href="mailto:utkarshg08@gmail.com">utkarshg08@gmail.com</a> — we will
+  permanently remove your row within 30 days of a verified request.
+</p>
+
+<h2>Your choices</h2>
+<ul>
+  <li>Use the app fully offline by choosing "Continue without account" on sign-in.</li>
+  <li>Sign out from Settings — clears the local session and wipes local data.</li>
+  <li>"Reset All Data" — nuclear option that wipes device data instantly.</li>
+  <li>Delete your cloud account — email us to remove your row from Supabase.</li>
+</ul>
+
+<h2>Children</h2>
+<p>
+  Progressive is not directed at children under 13. If you believe a child
+  under 13 has provided us data, please email us and we will remove it.
+</p>
+
+<h2>Changes to this policy</h2>
+<p>
+  If we change how we handle data, we will update this page and bump the
+  "Last updated" date. Material changes will also be announced in-app.
+</p>
+
+<hr />
+<p class="meta">
+  This privacy policy applies to the Progressive Android and web apps.
+</p>
+
+</body>
+</html>

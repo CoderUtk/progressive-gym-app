@@ -16,6 +16,8 @@ import AnalyticsScreen from '../screens/AnalyticsScreen';
 import TemplateSelectScreen from '../screens/TemplateSelectScreen';
 import ExercisePickerScreen from '../screens/ExercisePickerScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
+import SignInScreen from '../screens/SignInScreen';
+import SplashScreen from '../screens/SplashScreen';
 import ProfileSummaryScreen from '../screens/ProfileSummaryScreen';
 import DailyPlanScreen from '../screens/DailyPlanScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -25,7 +27,10 @@ import AppLogo from './AppLogo';
 import AppHeaderTitle from './AppHeaderTitle';
 import ActiveSessionPill from './ActiveSessionPill';
 import { colors } from '../utils/theme';
-import { hasSeenOnboarding, clearAllData } from '../utils/storage';
+// Splash is now the initial route on every cold start; it handles the
+// state check and routes to Home / Welcome / SignIn on its own after the
+// intro animation. Keeps AppRoot dumb and eliminates the race where the
+// state check finishes before we have a first frame to render.
 import { WorkoutSessionProvider } from '../utils/workoutSession';
 
 const Stack = createNativeStackNavigator();
@@ -81,35 +86,19 @@ function HomeTabs() {
 }
 
 export default function AppRoot() {
-  const [initialRoute, setInitialRoute] = useState('Loading');
+  // Splash is always the first route now; routing decisions happen there.
+  return <NavShell />;
+}
 
-  useEffect(() => {
-    async function init() {
-      const seen = await hasSeenOnboarding();
-      if (!seen) {
-        await clearAllData();
-      }
-      setInitialRoute(seen ? 'Home' : 'Welcome');
-    }
-    init();
-  }, []);
-
-  if (initialRoute === 'Loading') {
-    return (
-      <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color={colors.accent} size="large" />
-        </View>
-      </SafeAreaProvider>
-    );
-  }
-
+function NavShell() {
   return (
     <SafeAreaProvider>
       <WorkoutSessionProvider>
         <NavigationContainer>
           <StatusBar style="light" />
-          <Stack.Navigator screenOptions={sharedHeaderOptions}>
+          <Stack.Navigator initialRouteName="Splash" screenOptions={sharedHeaderOptions}>
+            <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ProfileSummary" component={ProfileSummaryScreen} options={{ headerShown: false }} />
             <Stack.Screen name="DailyPlan" component={DailyPlanScreen} options={{ title: 'Choose Workout' }} />

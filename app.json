@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.progressive.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D0F14"
@@ -30,7 +30,8 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "googleClientId": "PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE",
+      "supabaseUrl": "https://bxybxfvhjlzqvapoyzwm.supabase.co",
+      "supabasePublishableKey": "sb_publishable_ptyE5I8p0HVrvWCflK4XqQ_4DXdwxn2",
       "eas": {
         "projectId": "cfa38db8-94fb-4e28-9987-980ccb6de202"
       }

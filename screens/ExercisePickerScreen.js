@@ -98,7 +98,7 @@ export default function ExercisePickerScreen({ route, navigation }) {
                 ]}
               >
                 <View style={styles.iconWrap}>
-                  <MuscleIcon equipment={item.equipment} size={22} />
+                  <MuscleIcon equipment={item.equipment} muscle={item.muscle} size={22} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.exName}>{item.name}</Text>

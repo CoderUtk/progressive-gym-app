@@ -1,5 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Debounced cloud backup. Called after every local mutation; the safe wrapper
+// no-ops when the user isn't signed in, so we don't gate on auth here. Lazy-
+// require breaks the storage↔cloudSync import cycle without adding another
+// module.
+let autoBackupTimer = null;
+const AUTO_BACKUP_DELAY_MS = 8000;
+function scheduleAutoBackup() {
+  if (autoBackupTimer) clearTimeout(autoBackupTimer);
+  autoBackupTimer = setTimeout(() => {
+    autoBackupTimer = null;
+    try {
+      const { backupToCloudSafe } = require('./cloudSync');
+      backupToCloudSafe();
+    } catch (e) {
+      // never let a sync failure surface into a write path
+    }
+  }, AUTO_BACKUP_DELAY_MS);
+}
+
 const KEYS = {
   WORKOUTS: 'progressive:workouts', // array of completed workout sessions
   TEMPLATES: 'progressive:templates',
@@ -8,7 +27,6 @@ const KEYS = {
   HAS_SEEN_ONBOARDING: 'progressive:hasSeenOnboarding',
   WEIGHT_UNIT: 'progressive:weightUnit',
   PLATE_INCREMENT: 'progressive:plateIncrement',
-  GOOGLE_ACCOUNT: 'progressive:googleAccount',
   EXERCISE_NOTES: 'progressive:exerciseNotes',
 };
 
@@ -25,6 +43,7 @@ export async function setExerciseNote(exerciseId, note) {
   if (trimmed) notes[exerciseId] = trimmed;
   else delete notes[exerciseId];
   await AsyncStorage.setItem(KEYS.EXERCISE_NOTES, JSON.stringify(notes));
+  scheduleAutoBackup();
   return notes;
 }
 
@@ -37,6 +56,7 @@ export async function getWeightUnit() {
 
 export async function setWeightUnit(unit) {
   await AsyncStorage.setItem(KEYS.WEIGHT_UNIT, unit === 'lb' ? 'lb' : 'kg');
+  scheduleAutoBackup();
 }
 
 // Smallest available plate increment at the user's gym (kg). Used for
@@ -50,22 +70,7 @@ export async function getPlateIncrement() {
 
 export async function setPlateIncrement(value) {
   await AsyncStorage.setItem(KEYS.PLATE_INCREMENT, String(value));
-}
-
-// Stores the signed-in Google account's basic profile (name/email/picture)
-// plus the access token needed for Drive sync calls. The token is short-
-// lived, so a stale one just means the next sync prompts a re-connect.
-export async function getGoogleAccount() {
-  const raw = await AsyncStorage.getItem(KEYS.GOOGLE_ACCOUNT);
-  return raw ? JSON.parse(raw) : null;
-}
-
-export async function setGoogleAccount(account) {
-  await AsyncStorage.setItem(KEYS.GOOGLE_ACCOUNT, JSON.stringify(account));
-}
-
-export async function clearGoogleAccount() {
-  await AsyncStorage.removeItem(KEYS.GOOGLE_ACCOUNT);
+  scheduleAutoBackup();
 }
 
 // Built-in starter templates. Users can edit these (which forks them into
@@ -95,6 +100,7 @@ export async function saveTemplate(template) {
   const saved = raw ? JSON.parse(raw) : {};
   saved[template.id] = template;
   await AsyncStorage.setItem(KEYS.TEMPLATES, JSON.stringify(saved));
+  scheduleAutoBackup();
   return getTemplates();
 }
 
@@ -103,6 +109,7 @@ export async function deleteTemplate(templateId) {
   const saved = raw ? JSON.parse(raw) : {};
   delete saved[templateId];
   await AsyncStorage.setItem(KEYS.TEMPLATES, JSON.stringify(saved));
+  scheduleAutoBackup();
   return getTemplates();
 }
 
@@ -113,6 +120,7 @@ export async function getActiveTemplateId() {
 
 export async function setActiveTemplateId(id) {
   await AsyncStorage.setItem(KEYS.ACTIVE_TEMPLATE, id);
+  scheduleAutoBackup();
 }
 
 // Workout session shape:
@@ -127,6 +135,7 @@ export async function saveWorkout(session) {
   const all = await getWorkouts();
   all.push(session);
   await AsyncStorage.setItem(KEYS.WORKOUTS, JSON.stringify(all));
+  scheduleAutoBackup();
   return all;
 }
 
@@ -151,6 +160,7 @@ export async function clearAllData() {
 
 export async function saveProfile(profile) {
   await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
+  scheduleAutoBackup();
   return profile;
 }
 
@@ -160,6 +170,7 @@ export async function updateProfile(patch) {
   const current = await getProfile();
   const next = { ...(current || {}), ...patch };
   await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(next));
+  scheduleAutoBackup();
   return next;
 }
 
@@ -175,6 +186,43 @@ export async function setHasSeenOnboarding(value = true) {
 export async function hasSeenOnboarding() {
   const raw = await AsyncStorage.getItem(KEYS.HAS_SEEN_ONBOARDING);
   return raw === 'true';
+}
+
+// True once the user has explicitly chosen a sign-in path (Google / email /
+// anonymous / skip). Separate from onboarding so we don't nag them with the
+// sign-in gate on every launch if profile setup got interrupted.
+export async function hasChosenAuth() {
+  const raw = await AsyncStorage.getItem('progressive:hasChosenAuth');
+  return raw === 'true';
+}
+
+export async function setHasChosenAuth(value = true) {
+  await AsyncStorage.setItem('progressive:hasChosenAuth', value ? 'true' : 'false');
+}
+
+// User-added exercises. Stored as an array. Same schema as built-ins from
+// data/exercises.js (id, name, muscle, secondary, equipment, aliases, emoji,
+// tracking_type). Backed up to the cloud via the standard snapshot flow.
+export async function getStoredCustomExercises() {
+  const raw = await AsyncStorage.getItem('progressive:customExercises');
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function saveCustomExercise(exercise) {
+  const list = await getStoredCustomExercises();
+  const without = list.filter((e) => e.id !== exercise.id);
+  const next = [...without, exercise];
+  await AsyncStorage.setItem('progressive:customExercises', JSON.stringify(next));
+  scheduleAutoBackup();
+  return next;
+}
+
+export async function deleteCustomExerciseStored(id) {
+  const list = await getStoredCustomExercises();
+  const next = list.filter((e) => e.id !== id);
+  await AsyncStorage.setItem('progressive:customExercises', JSON.stringify(next));
+  scheduleAutoBackup();
+  return next;
 }
 
 // Kept as a no-op so older screens that still call it don't break; the app

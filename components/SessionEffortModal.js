@@ -8,12 +8,16 @@ import { colors, spacing } from '../utils/theme';
 // the user to fumble with a slider on a small screen. Number pills are
 // tab-target friendly and score selection is one tap.
 const LABELS = {
-  1: 'Very light',
-  3: 'Light',
+  1: 'Very easy',
+  2: 'Easy',
+  3: 'Easy',
+  4: 'Somewhat easy',
   5: 'Moderate',
+  6: 'Moderate+',
   7: 'Hard',
-  9: 'Very hard',
-  10: 'All-out max',
+  8: 'Very hard',
+  9: '1 rep left in the tank',
+  10: 'Couldn\'t do another rep',
 };
 
 export default function SessionEffortModal({ visible, onSubmit, onSkip }) {
@@ -31,24 +35,35 @@ export default function SessionEffortModal({ visible, onSubmit, onSkip }) {
       <View style={styles.backdrop}>
         <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.card}>
-          <Text style={styles.title}>How hard was that?</Text>
-          <Text style={styles.subtitle}>Session effort · 1 easy, 10 all-out</Text>
+          <Text style={styles.title}>How hard was that workout?</Text>
+          <Text style={styles.subtitle}>
+            1 = very easy · 10 = couldn't do another rep
+          </Text>
 
-          <View style={styles.scale}>
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-              <Pressable
-                key={n}
-                onPress={() => setValue(n)}
-                style={[styles.pill, value === n && styles.pillActive]}
-              >
+          <View style={styles.scaleRow}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Pressable key={n} onPress={() => setValue(n)} style={[styles.pill, value === n && styles.pillActive]}>
+                <Text style={[styles.pillText, value === n && styles.pillTextActive]}>{n}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.scaleRow}>
+            {[6, 7, 8, 9, 10].map((n) => (
+              <Pressable key={n} onPress={() => setValue(n)} style={[styles.pill, value === n && styles.pillActive]}>
                 <Text style={[styles.pillText, value === n && styles.pillTextActive]}>{n}</Text>
               </Pressable>
             ))}
           </View>
 
+          <View style={styles.anchorRow}>
+            <Text style={styles.anchorText}>Easy</Text>
+            <Text style={styles.anchorText}>Hard</Text>
+            <Text style={styles.anchorText}>All-out</Text>
+          </View>
+
           <Text style={styles.hintLabel}>{label}</Text>
 
-          <PrimaryButton title={`Save · RPE ${value}`} onPress={() => onSubmit(value)} style={{ marginTop: spacing.md }} />
+          <PrimaryButton title={`Save · ${value}/10`} onPress={() => onSubmit(value)} style={{ marginTop: spacing.md }} />
           <Pressable onPress={onSkip} style={styles.skipBtn}>
             <Text style={styles.skipText}>Skip</Text>
           </Pressable>
@@ -67,11 +82,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.10)',
     padding: spacing.lg,
   },
-  title: { color: colors.text, fontSize: 19, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
-  subtitle: { color: colors.muted, fontSize: 12, textAlign: 'center', marginBottom: spacing.lg },
-  scale: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },
+  title: { color: colors.text, fontSize: 19, fontWeight: '800', textAlign: 'center', marginBottom: 6 },
+  subtitle: { color: colors.muted, fontSize: 12, textAlign: 'center', marginBottom: spacing.lg, lineHeight: 17, paddingHorizontal: spacing.sm },
+  scaleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
   pill: {
-    width: '18%',
+    flex: 1,
     aspectRatio: 1,
     borderRadius: 10,
     borderWidth: 1,
@@ -80,6 +100,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.bg,
   },
+  anchorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+    paddingHorizontal: 4,
+  },
+  anchorText: { color: colors.mutedDim, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   pillActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   pillText: { color: colors.text, fontSize: 15, fontWeight: '800' },
   pillTextActive: { color: colors.ctaText },

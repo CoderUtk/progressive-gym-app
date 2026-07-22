@@ -7,13 +7,18 @@ import * as Sharing from 'expo-sharing';
 import ShareCard from './ShareCard';
 import { PrimaryButton } from './UI';
 import { colors, spacing } from '../utils/theme';
+// Metro picks webCapture.web.js on web, webCapture.js on native — html2canvas
+// only touches the web bundle.
+import { captureDomNode } from '../utils/webCapture';
 
 // Modal that previews the ShareCard and hands the captured PNG to the OS
 // share sheet. Web falls back to a download link since expo-sharing has no
 // browser share sheet parity.
 export default function ShareCardModal({ visible, onClose, profile, session, unit, prCount, topPR }) {
-  const shotRef = useRef(null);
+  const shotRef = useRef(null);   // ViewShot instance (native)
+  const webRef = useRef(null);    // DOM node backing the RN View (web)
   const [busy, setBusy] = useState(false);
+  const isWeb = Platform.OS === 'web';
 
   // Scale the card down to fit inside the modal (keeps the 9:16 ratio) but
   // capture at whatever pixel size the renderer produces — on a 3x device
@@ -22,18 +27,24 @@ export default function ShareCardModal({ visible, onClose, profile, session, uni
   const previewWidth = Math.min(screenW - spacing.lg * 2, 320);
 
   async function handleShare() {
-    if (!shotRef.current) return;
     setBusy(true);
     try {
-      const uri = await shotRef.current.capture();
-      if (Platform.OS === 'web') {
-        // On web, expo-sharing is a no-op. Open the data URI so the user can
-        // right-click / save it manually — honest about the platform limit.
-        const w = window.open();
-        if (w) {
-          w.document.write(`<img src="${uri}" style="max-width:100%;display:block;margin:24px auto;background:#0B0E11" />`);
-        }
+      let uri;
+      if (isWeb) {
+        // html2canvas rasterizes the actual DOM node backing the RN View.
+        // Returns a data URI directly; no filesystem involved on web.
+        uri = await captureDomNode(webRef.current);
+        // Web has no expo-sharing parity. Best UX: kick off a real download
+        // of the PNG rather than opening a new tab the user has to save from.
+        const a = document.createElement('a');
+        a.href = uri;
+        a.download = `progressive-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       } else {
+        if (!shotRef.current) return;
+        uri = await shotRef.current.capture();
         const available = await Sharing.isAvailableAsync();
         if (!available) {
           Alert.alert('Share unavailable', 'Sharing is not available on this device.');
@@ -64,19 +75,33 @@ export default function ShareCardModal({ visible, onClose, profile, session, uni
           </View>
 
           <View style={styles.previewWrap}>
-            <ViewShot
-              ref={shotRef}
-              options={{ format: 'png', quality: 1, result: 'tmpfile' }}
-            >
-              <ShareCard
-                profile={profile}
-                session={session}
-                unit={unit}
-                prCount={prCount}
-                topPR={topPR}
-                width={previewWidth}
-              />
-            </ViewShot>
+            {isWeb ? (
+              // On web, a plain View — its DOM node is what html2canvas reads.
+              <View ref={webRef}>
+                <ShareCard
+                  profile={profile}
+                  session={session}
+                  unit={unit}
+                  prCount={prCount}
+                  topPR={topPR}
+                  width={previewWidth}
+                />
+              </View>
+            ) : (
+              <ViewShot
+                ref={shotRef}
+                options={{ format: 'png', quality: 1, result: 'tmpfile' }}
+              >
+                <ShareCard
+                  profile={profile}
+                  session={session}
+                  unit={unit}
+                  prCount={prCount}
+                  topPR={topPR}
+                  width={previewWidth}
+                />
+              </ViewShot>
+            )}
           </View>
 
           <PrimaryButton

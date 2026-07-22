@@ -2,8 +2,10 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, Image, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect } from '@react-navigation/native';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Card, Pill } from '../components/UI';
+import EditProfileModal from '../components/EditProfileModal';
 import { colors, spacing } from '../utils/theme';
 import { getProfile, getWorkouts, getWeightUnit, updateProfile } from '../utils/storage';
 import { computeStats, computeLevel, getBadgeStatus } from '../utils/badges';
@@ -28,6 +30,10 @@ function pickAvatar(name) {
 
 // Two-step: prompt for source, then permission + picker. On simulator/web the
 // picker still runs — expo-image-picker uses the browser file input on web.
+// The picked image is downscaled to 256x256 JPEG @ 0.6 quality and stored as
+// a base64 data URI (avatarData). This keeps the profile blob small enough
+// to include in the cloud snapshot upload (~15-30 KB per avatar) so the
+// picture actually round-trips across devices instead of a dead local URI.
 async function pickAvatarPhoto(profile, setProfile) {
   const proceed = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -42,15 +48,28 @@ async function pickAvatarPhoto(profile, setProfile) {
       quality: 0.8,
     });
     if (result.canceled || !result.assets?.[0]?.uri) return;
-    const next = await updateProfile({ avatarUri: result.assets[0].uri });
+
+    // Resize + re-encode to keep the base64 blob under ~30 KB. Original
+    // camera photos can be 5-15 MB, which base64-encodes to ~20 MB — that
+    // would blow up every backup snapshot.
+    const manipulated = await ImageManipulator.manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 256, height: 256 } }],
+      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    const avatarData = `data:image/jpeg;base64,${manipulated.base64}`;
+    // Wipe the old avatarUri so displays don't keep pointing at the local
+    // file — avatarData is the source of truth now.
+    const next = await updateProfile({ avatarData, avatarUri: null });
     setProfile(next);
   };
 
-  if (profile?.avatarUri) {
+  const hasAvatar = profile?.avatarData || profile?.avatarUri;
+  if (hasAvatar) {
     Alert.alert('Change avatar', 'Pick a new photo or reset to the default icon.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Reset to default', style: 'destructive', onPress: async () => {
-        const next = await updateProfile({ avatarUri: null });
+        const next = await updateProfile({ avatarData: null, avatarUri: null });
         setProfile(next);
       }},
       { text: 'Choose photo', onPress: proceed },
@@ -61,10 +80,12 @@ async function pickAvatarPhoto(profile, setProfile) {
 }
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ totalWorkouts: 0, totalSets: 0, totalWeight: 0, totalPRs: 0 });
   const [unit, setUnit] = useState('kg');
   const [workouts, setWorkouts] = useState([]);
+  const [editOpen, setEditOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -104,8 +125,8 @@ export default function ProfileScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
       <Card style={{ alignItems: 'center', marginBottom: spacing.md }}>
         <View style={styles.avatarWrap}>
-          {profile?.avatarUri ? (
-            <Image source={{ uri: profile.avatarUri }} style={styles.avatar} />
+          {profile?.avatarData || profile?.avatarUri ? (
+            <Image source={{ uri: profile.avatarData || profile.avatarUri }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, { backgroundColor: pickAvatar(profile?.name).bg }]}>
               <Feather name={pickAvatar(profile?.name).icon} size={34} color={pickAvatar(profile?.name).fg} />
@@ -115,8 +136,16 @@ export default function ProfileScreen() {
             <Feather name="camera" size={12} color={colors.ctaText} />
           </Pressable>
         </View>
-        <Text style={styles.name}>{profile?.name || 'Guest'}</Text>
-        <Text style={styles.ageLine}>{profile?.age ? `${profile.age} years old` : 'Age not set'}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{profile?.name || 'Guest'}</Text>
+          <Pressable onPress={() => setEditOpen(true)} style={styles.editBtn} hitSlop={10}>
+            <Feather name="edit-2" size={14} color={colors.accent} />
+          </Pressable>
+        </View>
+        <Text style={styles.ageLine}>
+          {profile?.age ? `${profile.age} years old` : 'Age not set'}
+          {profile?.weight ? ` · ${profile.weight}kg` : ''}
+        </Text>
         <View style={{ marginTop: spacing.sm }}>
           <Pill label={level.toUpperCase()} tone="accent" />
         </View>
@@ -174,6 +203,27 @@ export default function ProfileScreen() {
           </Card>
         ))}
       </View>
+
+      {/* Cross-platform Settings entry point. The Dashboard header gear works
+          on native but isn't discoverable on web, so ensure Settings is
+          reachable from Profile too. */}
+      <Pressable onPress={() => navigation.navigate('Settings')} style={styles.settingsRow}>
+        <View style={styles.settingsIcon}>
+          <Feather name="settings" size={18} color={colors.text} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.settingsLabel}>Settings</Text>
+          <Text style={styles.settingsSub}>Units, plate increment, account, sign out</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.muted} />
+      </Pressable>
+
+      <EditProfileModal
+        visible={editOpen}
+        profile={profile}
+        onClose={() => setEditOpen(false)}
+        onSaved={(next) => setProfile(next)}
+      />
     </ScrollView>
   );
 }
@@ -203,6 +253,38 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.card,
   },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  editBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.cardAlt,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  settingsIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.cardAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  settingsSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
   name: { color: colors.text, fontSize: 22, fontWeight: '900' },
   ageLine: { color: colors.muted, fontSize: 13, fontWeight: '600', marginTop: 2 },
   statsGrid: { flexDirection: 'row', gap: spacing.sm },
