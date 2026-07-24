@@ -11,6 +11,8 @@ import { getProfile } from '../utils/storage';
 import WorkoutCalendar from '../components/WorkoutCalendar';
 import VolumeLineChart from '../components/VolumeLineChart';
 import WeeklyVolumeCard from '../components/WeeklyVolumeCard';
+import StreakGrid from '../components/StreakGrid';
+import { computeStreaks, buildStreakGrid } from '../utils/streaks';
 
 function shortDate(iso) {
   const d = new Date(iso);
@@ -102,6 +104,10 @@ export default function AnalyticsScreen({ navigation }) {
   const chartLabels = buildChartLabels(recentVolumes);
   const chartPoints = recentVolumes.map((v) => v.volume);
 
+  // Streak calendar — GitHub-style heatmap of the last 26 weeks.
+  const streaks = computeStreaks(workouts);
+  const streakGrid = buildStreakGrid(streaks.byDay, 26);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
       <Card style={{ marginBottom: spacing.md, alignItems: 'center', minHeight: 180 }}>
@@ -143,6 +149,30 @@ export default function AnalyticsScreen({ navigation }) {
       )}
 
       <WeeklyVolumeCard workouts={workouts} />
+
+      <Card style={{ marginTop: spacing.md }}>
+        <Text style={styles.sectionLabel}>Consistency</Text>
+        <View style={styles.streakStatsRow}>
+          <View style={styles.streakStat}>
+            <Text style={styles.streakStatValue}>{streaks.current}</Text>
+            <Text style={styles.streakStatLabel}>Current streak</Text>
+          </View>
+          <View style={styles.streakStat}>
+            <Text style={styles.streakStatValue}>{streaks.longest}</Text>
+            <Text style={styles.streakStatLabel}>Longest streak</Text>
+          </View>
+          <View style={styles.streakStat}>
+            <Text style={styles.streakStatValue}>{streaks.totalDays}</Text>
+            <Text style={styles.streakStatLabel}>Total days</Text>
+          </View>
+        </View>
+        <View style={{ marginTop: spacing.md }}>
+          <StreakGrid
+            grid={streakGrid}
+            onDayPress={(date) => navigation.navigate('DayWorkout', { date })}
+          />
+        </View>
+      </Card>
 
       <Card style={{ marginTop: spacing.md }}>
         <Text style={styles.chartTitle}>Workout Calendar</Text>
@@ -198,4 +228,9 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
   modalTitle: { color: colors.text, fontSize: 17, fontWeight: '800', marginBottom: spacing.sm },
   modalBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: spacing.sm },
+  sectionLabel: { color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
+  streakStatsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  streakStat: { alignItems: 'center', flex: 1 },
+  streakStatValue: { color: colors.accent, fontSize: 24, fontWeight: '800' },
+  streakStatLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.4 },
 });

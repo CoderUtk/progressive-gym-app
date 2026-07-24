@@ -1,12 +1,33 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, FlatList, Pressable, ScrollView, StyleSheet, Platform, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card, Pill } from '../components/UI';
 import MuscleIcon from '../components/MuscleIcon';
 import AddExerciseModal from '../components/AddExerciseModal';
 import { colors, spacing, muscleTint } from '../utils/theme';
-import { MUSCLE_GROUPS, searchExercises } from '../data/exercises';
+import {
+  MUSCLE_GROUPS,
+  searchExercises,
+  isBuiltInExercise,
+  hideExerciseInMemory,
+  deleteCustomExerciseInMemory,
+} from '../data/exercises';
+import { hideExerciseStored, deleteCustomExerciseStored } from '../utils/storage';
+
+// Destructive-action confirm that works on both native (Alert) and web
+// (react-native-web's Alert is a no-op, so fall back to window.confirm).
+function confirmDelete(name, onConfirm) {
+  const msg = `Remove "${name}" from your library? Past workouts that used it are kept.`;
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm(msg)) onConfirm();
+    return;
+  }
+  Alert.alert('Delete exercise', msg, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: onConfirm },
+  ]);
+}
 
 export default function ExerciseLibraryScreen({ navigation }) {
   const [query, setQuery] = useState('');
@@ -17,6 +38,22 @@ export default function ExerciseLibraryScreen({ navigation }) {
   const [tick, setTick] = useState(0);
 
   useFocusEffect(useCallback(() => setTick((t) => t + 1), []));
+
+  // Deleting a built-in hides it (id recorded in storage, filtered from the
+  // catalog); deleting a custom removes it outright. Both update the in-memory
+  // list immediately so the row disappears without a reload.
+  function handleDelete(item) {
+    confirmDelete(item.name, async () => {
+      if (isBuiltInExercise(item.id)) {
+        hideExerciseInMemory(item.id);
+        await hideExerciseStored(item.id);
+      } else {
+        deleteCustomExerciseInMemory(item.id);
+        await deleteCustomExerciseStored(item.id);
+      }
+      setTick((t) => t + 1);
+    });
+  }
 
   const results = useMemo(() => {
     let list = searchExercises(query);
@@ -55,8 +92,11 @@ export default function ExerciseLibraryScreen({ navigation }) {
         renderItem={({ item }) => {
           const tint = muscleTint(item.muscle);
           return (
-            <Pressable onPress={() => navigation.navigate('ExerciseHistory', { exerciseId: item.id })}>
-              <Card style={{ marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center' }}>
+            <Card style={{ marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center' }}>
+              <Pressable
+                style={styles.rowContent}
+                onPress={() => navigation.navigate('ExerciseHistory', { exerciseId: item.id })}
+              >
                 <View style={[styles.iconWrap, { backgroundColor: tint + '22', borderColor: tint + '55' }]}>
                   <MuscleIcon equipment={item.equipment} muscle={item.muscle} size={26} />
                 </View>
@@ -67,8 +107,16 @@ export default function ExerciseLibraryScreen({ navigation }) {
                     {item.custom ? '  · Custom' : ''}
                   </Text>
                 </View>
-              </Card>
-            </Pressable>
+              </Pressable>
+              <Pressable
+                onPress={() => handleDelete(item)}
+                hitSlop={10}
+                style={styles.deleteBtn}
+                accessibilityLabel={`Delete ${item.name}`}
+              >
+                <Feather name="trash-2" size={18} color={colors.mutedDim} />
+              </Pressable>
+            </Card>
           );
         }}
         ListEmptyComponent={
@@ -105,6 +153,8 @@ const styles = StyleSheet.create({
   },
   filterScroll: { flexGrow: 0, flexShrink: 0, marginBottom: spacing.sm, marginTop: 2, minHeight: 44 },
   filterRow: { gap: spacing.xs, paddingVertical: 10, paddingRight: spacing.md, alignItems: 'center' },
+  rowContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
+  deleteBtn: { paddingLeft: spacing.sm, paddingVertical: spacing.xs },
   exName: { color: colors.text, fontSize: 16, fontWeight: '700', lineHeight: 20 },
   exMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
   iconWrap: {

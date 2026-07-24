@@ -42,3 +42,6 @@ Thumbs.db
 
 graphify-out/**
 .vercel
+
+# Release signing keystore — never commit
+android/app/progressive-release.keystore

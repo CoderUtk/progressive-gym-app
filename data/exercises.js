@@ -116,6 +116,10 @@ const BUILT_IN_EXERCISES = [
 // (searchExercises / getExerciseById / EXERCISES export) continue to work
 // without every consumer becoming async.
 let _customExercises = [];
+// Ids of built-in exercises the user has "deleted" (hidden). Loaded into
+// memory at startup from AsyncStorage — see SplashScreen — mirroring the
+// custom-exercise pattern so the sync getAllExercises() API stays sync.
+let _hiddenIds = [];
 
 export function getCustomExercises() {
   return _customExercises;
@@ -123,6 +127,18 @@ export function getCustomExercises() {
 
 export function setCustomExercisesInMemory(list) {
   _customExercises = Array.isArray(list) ? list : [];
+}
+
+export function setHiddenExercisesInMemory(ids) {
+  _hiddenIds = Array.isArray(ids) ? ids : [];
+}
+
+export function hideExerciseInMemory(id) {
+  if (!_hiddenIds.includes(id)) _hiddenIds = [..._hiddenIds, id];
+}
+
+export function isBuiltInExercise(id) {
+  return BUILT_IN_EXERCISES.some((e) => e.id === id);
 }
 
 export function addCustomExerciseInMemory(ex) {
@@ -135,11 +151,21 @@ export function deleteCustomExerciseInMemory(id) {
   _customExercises = _customExercises.filter((e) => e.id !== id);
 }
 
-// Live combined list. Consumers get built-ins + whatever the user has added.
-// We reconstruct on every access so freshly-added items show up immediately
-// without needing a reactive subscription — the array is small enough that
-// this is fine.
+// Live combined list, EXCLUDING hidden built-ins. This is the "visible
+// catalog" used by search, the library, and the exercise picker. We
+// reconstruct on every access so freshly-added/removed items show up
+// immediately without a reactive subscription — the array is small.
 export function getAllExercises() {
+  const visibleBuiltIns = _hiddenIds.length
+    ? BUILT_IN_EXERCISES.filter((e) => !_hiddenIds.includes(e.id))
+    : BUILT_IN_EXERCISES;
+  return [...visibleBuiltIns, ..._customExercises];
+}
+
+// Full list INCLUDING hidden built-ins — used only for id lookups so that
+// historical workouts referencing a hidden exercise still resolve its name,
+// muscle, and tracking type when rendering history and analytics.
+function getAllExercisesIncludingHidden() {
   return [...BUILT_IN_EXERCISES, ..._customExercises];
 }
 
@@ -161,7 +187,7 @@ export function searchExercises(query) {
 }
 
 export function getExerciseById(id) {
-  return getAllExercises().find((e) => e.id === id);
+  return getAllExercisesIncludingHidden().find((e) => e.id === id);
 }
 
 export const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Arms', 'Shoulders', 'Core', 'Cardio'];

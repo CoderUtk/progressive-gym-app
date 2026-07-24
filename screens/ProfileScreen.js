@@ -9,6 +9,7 @@ import EditProfileModal from '../components/EditProfileModal';
 import { colors, spacing } from '../utils/theme';
 import { getProfile, getWorkouts, getWeightUnit, updateProfile } from '../utils/storage';
 import { computeStats, computeLevel, getBadgeStatus } from '../utils/badges';
+import { computeMilestones, nextMilestoneSummary } from '../utils/milestones';
 import { formatWeight, formatVolume } from '../utils/units';
 import { estimate1RM, STRENGTH_LIFT_LABELS, computeStrengthTier } from '../utils/strength';
 
@@ -101,6 +102,7 @@ export default function ProfileScreen() {
   const level = computeLevel(stats.totalWorkouts);
   const badges = getBadgeStatus(stats);
   const earnedBadges = badges.filter((b) => b.earned);
+  const milestones = computeMilestones(workouts, profile?.weight || 70);
 
   // Best estimated 1RM per lift, from the heaviest-weight set ever logged.
   const bestSetByExercise = {};
@@ -194,6 +196,39 @@ export default function ProfileScreen() {
         ))}
       </Card>
 
+      {milestones.nextUp ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <Text style={styles.sectionLabel}>Next Strength Milestone</Text>
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <Text style={{ fontSize: 32 }}>{milestones.nextUp.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.milestoneLabel}>{milestones.nextUp.label}</Text>
+                <Text style={styles.milestoneSub}>{milestones.nextUp.display}</Text>
+              </View>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.max(4, milestones.nextUp.pct * 100)}%` }]} />
+            </View>
+            <Text style={styles.milestoneHint}>{nextMilestoneSummary(milestones.nextUp)}</Text>
+          </Card>
+        </View>
+      ) : null}
+
+      <Text style={styles.sectionLabel}>
+        Strength Milestones ({milestones.earned.length}/{milestones.all.length})
+      </Text>
+      <View style={styles.badgeGrid}>
+        {milestones.all.map((m) => (
+          <Card key={m.id} style={[styles.badgeCard, !m.earned && styles.badgeLocked]}>
+            <Text style={[styles.badgeEmoji, !m.earned && { opacity: 0.25 }]}>{m.emoji}</Text>
+            <Text style={[styles.badgeLabel, !m.earned && { color: colors.muted }]} numberOfLines={2}>
+              {m.label}
+            </Text>
+          </Card>
+        ))}
+      </View>
+
       <Text style={styles.sectionLabel}>Badges Earned ({earnedBadges.length}/{badges.length})</Text>
       <View style={styles.badgeGrid}>
         {badges.map((b) => (
@@ -207,6 +242,17 @@ export default function ProfileScreen() {
       {/* Cross-platform Settings entry point. The Dashboard header gear works
           on native but isn't discoverable on web, so ensure Settings is
           reachable from Profile too. */}
+      <Pressable onPress={() => navigation.navigate('Records')} style={styles.settingsRow}>
+        <View style={styles.settingsIcon}>
+          <Feather name="award" size={18} color={colors.text} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.settingsLabel}>Records</Text>
+          <Text style={styles.settingsSub}>Volume, sets, reps, and per-muscle personal bests</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.muted} />
+      </Pressable>
+
       <Pressable onPress={() => navigation.navigate('Settings')} style={styles.settingsRow}>
         <View style={styles.settingsIcon}>
           <Feather name="settings" size={18} color={colors.text} />
@@ -303,4 +349,19 @@ const styles = StyleSheet.create({
   badgeLocked: { opacity: 0.6 },
   badgeEmoji: { fontSize: 28, marginBottom: spacing.xs },
   badgeLabel: { color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  milestoneLabel: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  milestoneSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  milestoneHint: { color: colors.mutedDim, fontSize: 12, marginTop: spacing.sm, lineHeight: 17 },
+  progressTrack: {
+    height: 8,
+    backgroundColor: colors.cardAlt,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: spacing.md,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+    borderRadius: 4,
+  },
 });

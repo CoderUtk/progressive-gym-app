@@ -16,6 +16,7 @@ import AnalyticsScreen from '../screens/AnalyticsScreen';
 import TemplateSelectScreen from '../screens/TemplateSelectScreen';
 import ExercisePickerScreen from '../screens/ExercisePickerScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
+import FeatureTourScreen from '../screens/FeatureTourScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SplashScreen from '../screens/SplashScreen';
 import ProfileSummaryScreen from '../screens/ProfileSummaryScreen';
@@ -23,6 +24,7 @@ import DailyPlanScreen from '../screens/DailyPlanScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DayWorkoutScreen from '../screens/DayWorkoutScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import RecordsScreen from '../screens/RecordsScreen';
 import AppLogo from './AppLogo';
 import AppHeaderTitle from './AppHeaderTitle';
 import ActiveSessionPill from './ActiveSessionPill';
@@ -79,6 +81,7 @@ function HomeTabs() {
         })}
       />
       <Tab.Screen name="Exercises" component={ExerciseLibraryScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="search" color={color} />, title: 'Exercises' }} />
+      <Tab.Screen name="Workouts" component={TemplateSelectScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="clipboard" color={color} />, title: 'Workouts' }} />
       <Tab.Screen name="Analytics" component={AnalyticsScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="bar-chart-2" color={color} />, title: 'Analytics' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color }) => <TabIcon name="user" color={color} />, title: 'Profile' }} />
     </Tab.Navigator>
@@ -98,6 +101,7 @@ function NavShell() {
           <StatusBar style="light" />
           <Stack.Navigator initialRouteName="Splash" screenOptions={sharedHeaderOptions}>
             <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="FeatureTour" component={FeatureTourScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ProfileSummary" component={ProfileSummaryScreen} options={{ headerShown: false }} />
@@ -109,6 +113,7 @@ function NavShell() {
             <Stack.Screen name="ExercisePicker" component={ExercisePickerScreen} options={{ title: 'Select Exercises' }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
             <Stack.Screen name="DayWorkout" component={DayWorkoutScreen} options={{ title: 'Workout History' }} />
+            <Stack.Screen name="Records" component={RecordsScreen} options={{ title: 'Records' }} />
           </Stack.Navigator>
           <ActiveSessionPill />
         </NavigationContainer>

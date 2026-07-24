@@ -9,8 +9,21 @@ import {
   saveTemplate,
   deleteTemplate,
   setActiveTemplateId,
+  toggleTemplateDay,
   DEFAULT_TEMPLATES,
 } from '../utils/storage';
+
+// Weekday chips shown Monday-first, but stored as JS getDay() values
+// (0 = Sun … 6 = Sat) so scheduling checks match new Date().getDay() directly.
+const WEEK_DAYS = [
+  { v: 1, l: 'M' },
+  { v: 2, l: 'T' },
+  { v: 3, l: 'W' },
+  { v: 4, l: 'T' },
+  { v: 5, l: 'F' },
+  { v: 6, l: 'S' },
+  { v: 0, l: 'S' },
+];
 
 export default function TemplateSelectScreen({ route, navigation }) {
   const { activeTemplateId } = route.params || {};
@@ -77,6 +90,12 @@ export default function TemplateSelectScreen({ route, navigation }) {
     deleteTemplate(template.id).then(load);
   }
 
+  // Pin/unpin a weekday. One-per-day: claiming a day another routine holds
+  // moves it here, so the list can shift for two cards at once — reload all.
+  function handleToggleDay(template, day) {
+    toggleTemplateDay(template.id, day).then(setTemplates);
+  }
+
   // Destructive "Delete" now lives behind a "•••" context menu instead of
   // sitting next to "Edit", so it can't be tapped by accident.
   function openMenu(template) {
@@ -121,6 +140,24 @@ export default function TemplateSelectScreen({ route, navigation }) {
                 </View>
                 {isActive && <Pill label="TODAY" tone="accent" />}
               </View>
+
+              <Text style={styles.scheduleLabel}>Schedule</Text>
+              <View style={styles.dayRow}>
+                {WEEK_DAYS.map((d) => {
+                  const on = (item.days || []).includes(d.v);
+                  return (
+                    <Pressable
+                      key={d.v}
+                      onPress={() => handleToggleDay(item, d.v)}
+                      style={[styles.dayChip, on && styles.dayChipOn]}
+                      accessibilityLabel={`Toggle ${item.name} on weekday ${d.v}`}
+                    >
+                      <Text style={[styles.dayChipText, on && styles.dayChipTextOn]}>{d.l}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <View style={styles.actionsRow}>
                 <Pressable style={styles.menuBtn} onPress={() => openMenu(item)}>
                   <Text style={styles.menuBtnText}>•••</Text>
@@ -212,6 +249,28 @@ const styles = StyleSheet.create({
   },
   renameSaveText: { color: colors.ctaText, fontWeight: '800' },
   exList: { color: colors.muted, fontSize: 13 },
+  scheduleLabel: {
+    color: colors.mutedDim,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  dayRow: { flexDirection: 'row', gap: spacing.xs },
+  dayChip: {
+    flex: 1,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayChipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  dayChipText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
+  dayChipTextOn: { color: colors.ctaText },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
   menuBtn: {
     width: 40,

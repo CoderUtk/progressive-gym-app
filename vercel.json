@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web && cp assets/privacy.html dist/privacy.html",
+  "buildCommand": "npx expo export --platform web && cp assets/privacy.html dist/privacy.html && cp assets/delete-account.html dist/delete-account.html",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }

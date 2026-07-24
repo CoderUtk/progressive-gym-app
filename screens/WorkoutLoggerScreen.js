@@ -188,6 +188,7 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
 
   const activeEx = exerciseData[activeIndex];
   const step = stepForEquipment(activeEx.exercise.equipment, plateIncrement);
+  const totalLoggedSets = exerciseData.reduce((n, e) => n + e.loggedSets.length, 0);
 
   function logSet() {
     const stored = commitSet(activeEx.exercise, current, {
@@ -238,6 +239,24 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
     const wasPaused = workoutSession.paused;
     if (workoutSession.active && !wasPaused) workoutSession.pause();
     setEffortModal({ visible: true, pending: { exercises, wasPaused } });
+  }
+
+  // Finish before reaching the last exercise — e.g. ran out of time or the
+  // rack was taken. Only whole exercises with at least one logged set are
+  // saved (finishWorkout already filters), so partial sessions record fine.
+  // Confirm first, because the effort modal that follows commits on any choice.
+  function finishEarly() {
+    const done = exerciseData.filter((e) => e.loggedSets.length > 0).length;
+    const total = exerciseData.length;
+    const msg = `Finish now with ${done} of ${total} exercises logged? Exercises with no sets won't be saved.`;
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(msg)) finishWorkout();
+      return;
+    }
+    Alert.alert('Finish workout early?', msg, [
+      { text: 'Keep going', style: 'cancel' },
+      { text: 'Finish', onPress: finishWorkout },
+    ]);
   }
 
   async function persistSession(effortValue) {
@@ -445,6 +464,13 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
         style={{ marginTop: spacing.lg }}
         onPress={nextExercise}
       />
+
+      {activeIndex < exerciseData.length - 1 && totalLoggedSets > 0 && (
+        <Pressable onPress={finishEarly} style={styles.finishEarlyBtn} hitSlop={6}>
+          <Feather name="flag" size={14} color={colors.muted} />
+          <Text style={styles.finishEarlyText}>Finish workout early</Text>
+        </Pressable>
+      )}
 
       <PRModal
         visible={resultModal.visible}
@@ -744,4 +770,13 @@ const styles = StyleSheet.create({
   historyLine: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 2 },
   noteText: { color: colors.muted, fontSize: 12, marginTop: spacing.xs, fontStyle: 'italic' },
   stepHint: { color: colors.mutedDim, fontSize: 11, marginTop: spacing.xs },
+  finishEarlyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  finishEarlyText: { color: colors.muted, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
 });

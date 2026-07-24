@@ -10,11 +10,14 @@ import {
   getWorkoutsForExercise,
   getTemplates,
   getActiveTemplateId,
+  getScheduledTemplateForToday,
   getWeightUnit,
   getPlateIncrement,
   getProfile,
   getWorkouts,
 } from '../utils/storage';
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 import { suggestNextTarget } from '../utils/progressiveOverload';
 import { formatWeight } from '../utils/units';
 import { stepForEquipment } from '../utils/increments';
@@ -56,6 +59,7 @@ export default function DashboardScreen({ navigation }) {
   const [unit, setUnit] = useState('kg');
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ total: 0, lastDate: null });
+  const [isScheduled, setIsScheduled] = useState(false);
 
   const loadTargetsFor = useCallback(async (tmpl) => {
     const [weightUnit, increment] = await Promise.all([getWeightUnit(), getPlateIncrement()]);
@@ -75,13 +79,17 @@ export default function DashboardScreen({ navigation }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [activeId, all, prof, allWorkouts] = await Promise.all([
+    const [scheduled, activeId, all, prof, allWorkouts] = await Promise.all([
+      getScheduledTemplateForToday(),
       getActiveTemplateId(),
       getTemplates(),
       getProfile(),
       getWorkouts(),
     ]);
-    const active = all.find((t) => t.id === activeId) || all[0];
+    // A routine pinned to today's weekday wins the Dashboard; otherwise fall
+    // back to the last-used (active) routine, preserving prior behaviour.
+    const active = scheduled || all.find((t) => t.id === activeId) || all[0];
+    setIsScheduled(!!scheduled);
     setTemplate(active);
     setProfile(prof);
     const sorted = [...allWorkouts].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -130,7 +138,9 @@ export default function DashboardScreen({ navigation }) {
       </View>
 
       <View style={styles.todayCard}>
-        <Text style={styles.todayEyebrow}>TODAY'S TARGETS</Text>
+        <Text style={styles.todayEyebrow}>
+          {isScheduled ? `${WEEKDAY_NAMES[new Date().getDay()].toUpperCase()}'S PLAN` : "TODAY'S TARGETS"}
+        </Text>
         <View style={styles.todayTitleRow}>
           <Text style={styles.todayTitle} numberOfLines={2}>{template.name}</Text>
           <Pressable style={styles.changeBtn} onPress={openTemplatePicker}>

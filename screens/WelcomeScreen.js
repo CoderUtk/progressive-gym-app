@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
 import { saveProfile, setHasSeenOnboarding } from '../utils/storage';
+import { getCurrentUser } from '../utils/authClient';
 
 // Browsers (via react-native-web) tint autofilled inputs with their own
 // yellow background, which clashes with the dark theme. This forces the
@@ -25,7 +26,30 @@ export default function WelcomeScreen() {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
+  const [avatarUri, setAvatarUri] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Prefill name (and photo) from the signed-in identity — Google gives us
+  // both, so a new user shouldn't have to retype what they just authenticated
+  // with. Age and weight aren't in the identity, so they still fill those.
+  // Only prefills empty fields, so it never clobbers what the user is typing.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        const meta = user?.user_metadata || {};
+        const googleName = meta.full_name || meta.name || '';
+        const googlePhoto = meta.avatar_url || meta.picture || null;
+        if (cancelled) return;
+        if (googleName) setName((prev) => prev || googleName.replace(/[0-9]/g, ''));
+        if (googlePhoto) setAvatarUri((prev) => prev || googlePhoto);
+      } catch (e) {
+        // No session (anonymous / skip path) — nothing to prefill, no problem.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   function handleAgeChange(text) {
     setAge(text.replace(/[^0-9]/g, ''));
@@ -50,6 +74,7 @@ export default function WelcomeScreen() {
       name: name.trim(),
       age: Number(age),
       weight: Number(weight),
+      ...(avatarUri ? { avatarUri } : {}),
     });
     await setHasSeenOnboarding(true);
     setLoading(false);
@@ -61,10 +86,20 @@ export default function WelcomeScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.logoWrap}>
           <View style={styles.logoGlow} />
-          <Image source={require('../assets/icon.png')} style={styles.logo} />
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatar} />
+          ) : (
+            <Image source={require('../assets/icon.png')} style={styles.logo} />
+          )}
         </View>
-        <Text style={styles.title}>Welcome to Progressive</Text>
-        <Text style={styles.subtitle}>Set up your profile and pick a workout plan for today.</Text>
+        <Text style={styles.title}>
+          {name ? `Welcome, ${name.split(' ')[0]}` : 'Welcome to Progressive'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {name
+            ? 'Just two more things — your age and weight — so we can track volume and milestones accurately.'
+            : 'Set up your profile and pick a workout plan for today.'}
+        </Text>
 
         <View style={styles.card}>
           <Text style={styles.label}>Name *</Text>
@@ -129,6 +164,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(62, 224, 158, 0.2)',
   },
   logo: { width: 64, height: 64, borderRadius: 16 },
+  avatar: { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.accent },
   title: { color: colors.text, fontSize: 30, fontWeight: '800', marginBottom: spacing.xs },
   subtitle: { color: colors.muted, fontSize: 15, marginBottom: spacing.lg },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },

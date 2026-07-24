@@ -25,6 +25,7 @@ const KEYS = {
   ACTIVE_TEMPLATE: 'progressive:activeTemplateId',
   PROFILE: 'progressive:profile',
   HAS_SEEN_ONBOARDING: 'progressive:hasSeenOnboarding',
+  HAS_SEEN_TOUR: 'progressive:hasSeenTour',
   WEIGHT_UNIT: 'progressive:weightUnit',
   PLATE_INCREMENT: 'progressive:plateIncrement',
   EXERCISE_NOTES: 'progressive:exerciseNotes',
@@ -123,6 +124,50 @@ export async function setActiveTemplateId(id) {
   scheduleAutoBackup();
 }
 
+// ─── Weekly scheduling ─────────────────────────────────────────────────────
+// A routine can be pinned to weekdays via a `days` array of JS weekday numbers
+// (0 = Sun … 6 = Sat). Scheduling is one-routine-per-day: assigning a day to
+// a routine removes that day from whatever routine previously held it. On the
+// scheduled weekday the Dashboard features that routine automatically.
+
+// Toggle `day` on `templateId`. If the routine already owns that day, clear it;
+// otherwise claim it and strip it from any other routine (one-per-day). Built-
+// in routines get forked into storage the first time they're scheduled, same
+// as editing them — DEFAULT_TEMPLATES stays untouched.
+export async function toggleTemplateDay(templateId, day) {
+  const raw = await AsyncStorage.getItem(KEYS.TEMPLATES);
+  const saved = raw ? JSON.parse(raw) : {};
+  const templates = await getTemplates(); // merged built-in + saved + custom
+  const target = templates.find((t) => t.id === templateId);
+  if (!target) return templates;
+  const claiming = !(target.days || []).includes(day);
+
+  for (const t of templates) {
+    const days = t.days || [];
+    let nextDays = days;
+    if (t.id === templateId) {
+      nextDays = claiming ? [...days, day] : days.filter((d) => d !== day);
+    } else if (claiming && days.includes(day)) {
+      // Someone else held this day — release it (one-per-day rule).
+      nextDays = days.filter((d) => d !== day);
+    } else {
+      continue; // untouched — don't fork it into storage needlessly
+    }
+    saved[t.id] = { ...t, days: nextDays };
+  }
+  await AsyncStorage.setItem(KEYS.TEMPLATES, JSON.stringify(saved));
+  scheduleAutoBackup();
+  return getTemplates();
+}
+
+// The routine scheduled for today's weekday, or null if it's an unscheduled
+// (rest) day. One-per-day guarantees at most one match.
+export async function getScheduledTemplateForToday() {
+  const templates = await getTemplates();
+  const today = new Date().getDay();
+  return templates.find((t) => (t.days || []).includes(today)) || null;
+}
+
 // Workout session shape:
 // { id, date (ISO), name, exercises: [ { exerciseId, sets: [ {weight, reps} ] } ] }
 
@@ -188,6 +233,19 @@ export async function hasSeenOnboarding() {
   return raw === 'true';
 }
 
+// True once the user has seen (or skipped) the first-run feature tour — the
+// swipeable value carousel shown before the sign-in gate. Kept separate from
+// HAS_SEEN_ONBOARDING (which tracks profile completion) so the tour shows
+// exactly once, independent of whether profile setup was finished.
+export async function setHasSeenTour(value = true) {
+  await AsyncStorage.setItem(KEYS.HAS_SEEN_TOUR, value ? 'true' : 'false');
+}
+
+export async function hasSeenTour() {
+  const raw = await AsyncStorage.getItem(KEYS.HAS_SEEN_TOUR);
+  return raw === 'true';
+}
+
 // True once the user has explicitly chosen a sign-in path (Google / email /
 // anonymous / skip). Separate from onboarding so we don't nag them with the
 // sign-in gate on every launch if profile setup got interrupted.
@@ -221,6 +279,32 @@ export async function deleteCustomExerciseStored(id) {
   const list = await getStoredCustomExercises();
   const next = list.filter((e) => e.id !== id);
   await AsyncStorage.setItem('progressive:customExercises', JSON.stringify(next));
+  scheduleAutoBackup();
+  return next;
+}
+
+// Hidden built-in exercises. Built-ins are a hardcoded catalog, so "deleting"
+// one means recording its id here and filtering it out of the library/search.
+// Lookups by id (getExerciseById) deliberately still resolve hidden built-ins
+// so historical workouts that reference them keep rendering correctly.
+export async function getHiddenExerciseIds() {
+  const raw = await AsyncStorage.getItem('progressive:hiddenExercises');
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function hideExerciseStored(id) {
+  const list = await getHiddenExerciseIds();
+  if (list.includes(id)) return list;
+  const next = [...list, id];
+  await AsyncStorage.setItem('progressive:hiddenExercises', JSON.stringify(next));
+  scheduleAutoBackup();
+  return next;
+}
+
+export async function unhideExerciseStored(id) {
+  const list = await getHiddenExerciseIds();
+  const next = list.filter((x) => x !== id);
+  await AsyncStorage.setItem('progressive:hiddenExercises', JSON.stringify(next));
   scheduleAutoBackup();
   return next;
 }

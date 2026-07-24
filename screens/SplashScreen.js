@@ -3,9 +3,10 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppLogo from '../components/AppLogo';
 import { colors } from '../utils/theme';
-import { hasChosenAuth, getProfile, getStoredCustomExercises } from '../utils/storage';
+import { hasChosenAuth, getProfile, getStoredCustomExercises, hasSeenTour, getHiddenExerciseIds } from '../utils/storage';
 import { getCurrentSession, getSupabase } from '../utils/authClient';
-import { setCustomExercisesInMemory } from '../data/exercises';
+import { restoreFromCloud } from '../utils/cloudSync';
+import { setCustomExercisesInMemory, setHiddenExercisesInMemory } from '../data/exercises';
 
 // If we came back from Google → Supabase carrying a ?code=... param, make
 // sure the session is fully exchanged before we look it up. supabase-js
@@ -47,16 +48,39 @@ export default function SplashScreen() {
 
     async function decide() {
       await handleWebAuthCallback();
-      const [profile, chosen, session, customs] = await Promise.all([
+      let [profile, chosen, session, customs, seenTour, hiddenIds] = await Promise.all([
         getProfile(),
         hasChosenAuth(),
         getCurrentSession(),
         getStoredCustomExercises(),
+        hasSeenTour(),
+        getHiddenExerciseIds(),
       ]);
+      setHiddenExercisesInMemory(hiddenIds);
+      // Signed in but no local profile? On web the Google redirect cold-boots
+      // the app here, so SignInScreen's post-auth restore never ran. Pull the
+      // cloud snapshot now, before routing — otherwise a returning user gets
+      // wrongly sent back through Name/Age/Weight setup. (No-op for a brand-new
+      // account with nothing backed up: restore returns false, profile stays
+      // empty, and we correctly route to profile setup.)
+      if (session && !profile?.name) {
+        try {
+          const restored = await restoreFromCloud();
+          if (restored) {
+            profile = await getProfile();
+            customs = await getStoredCustomExercises();
+            setHiddenExercisesInMemory(await getHiddenExerciseIds());
+          }
+        } catch (e) {
+          console.warn('Cloud restore on splash failed:', e?.message);
+        }
+      }
       // Populate the in-memory custom exercise list before routing so screens
       // that use searchExercises() see them from first render.
       setCustomExercisesInMemory(customs);
-      let target = 'SignIn';
+      // Brand-new user (no profile, no auth path) gets the feature tour first,
+      // exactly once. Returning/mid-onboarding users skip straight past it.
+      let target = seenTour ? 'SignIn' : 'FeatureTour';
       if (profile?.name) target = 'Home';
       else if (chosen || session) target = 'Welcome';
 
