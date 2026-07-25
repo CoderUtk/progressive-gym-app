@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Modal, FlatList, Pressable, StyleSheet, Alert, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card, Pill, PrimaryButton } from '../components/UI';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, fonts } from '../utils/theme';
 import { getExerciseById } from '../data/exercises';
 import {
   getTemplates,
@@ -212,7 +212,7 @@ export default function TemplateSelectScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   card: { marginBottom: spacing.sm },
-  name: { color: colors.text, fontSize: 17, fontWeight: '800', marginBottom: 4, lineHeight: 22 },
+  name: { color: colors.text, fontFamily: fonts.display, fontSize: 24, marginBottom: 4, lineHeight: 26, includeFontPadding: false },
   renameBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -248,12 +248,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 10,
   },
   renameSaveText: { color: colors.ctaText, fontWeight: '800' },
-  exList: { color: colors.muted, fontSize: 13 },
+  exList: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
   scheduleLabel: {
     color: colors.mutedDim,
+    fontFamily: fonts.bodySemi,
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginTop: spacing.md,
     marginBottom: spacing.xs,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayChipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  dayChipText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
+  dayChipText: { color: colors.muted, fontFamily: fonts.bodyBold, fontSize: 13 },
   dayChipTextOn: { color: colors.ctaText },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
   menuBtn: {
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.accent,
   },
-  useBtnText: { color: colors.bg, fontWeight: '800', fontSize: 13 },
+  useBtnText: { color: colors.bg, fontFamily: fonts.bodyBold, fontSize: 13 },
   useBtnTextActive: { color: colors.accent },
   footer: {
     position: 'absolute',

@@ -283,6 +283,19 @@ export async function deleteCustomExerciseStored(id) {
   return next;
 }
 
+// Smart reminders (local notifications) master switch. Defaults ON so new
+// users get the retention nudges; they can mute from Settings. Backed up in
+// the standard snapshot so the preference follows the account.
+export async function getSmartRemindersEnabled() {
+  const raw = await AsyncStorage.getItem('progressive:smartReminders');
+  return raw === null ? true : raw === 'true';
+}
+
+export async function setSmartRemindersEnabled(value) {
+  await AsyncStorage.setItem('progressive:smartReminders', value ? 'true' : 'false');
+  scheduleAutoBackup();
+}
+
 // Hidden built-in exercises. Built-ins are a hardcoded catalog, so "deleting"
 // one means recording its id here and filtering it out of the library/search.
 // Lookups by id (getExerciseById) deliberately still resolve hidden built-ins

@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Linking, Platform } from 'react-native';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Linking, Platform, Modal } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import GymMode from '../components/GymMode';
 import { v4 as uuidv4 } from 'uuid';
 import { Card, PrimaryButton, IconStepper, Pill } from '../components/UI';
 import MuscleIcon from '../components/MuscleIcon';
@@ -24,6 +25,7 @@ import {
   setExerciseNote,
 } from '../utils/storage';
 import { suggestNextTarget, detectPRs, roundToIncrement } from '../utils/progressiveOverload';
+import { refreshSmartNotifications } from '../utils/notifications';
 import { displayWeight, formatWeight, lbToKg } from '../utils/units';
 import { stepForEquipment } from '../utils/increments';
 
@@ -60,6 +62,7 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
   const [share, setShare] = useState({ visible: false, session: null, prCount: 0, topPR: null });
   const [profileForShare, setProfileForShare] = useState(null);
   const [effortModal, setEffortModal] = useState({ visible: false, pending: null });
+  const [gymMode, setGymMode] = useState(false);
   const workoutSession = useWorkoutSession();
 
   async function buildExerciseData(ids, increment) {
@@ -224,6 +227,23 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
     }
   }
 
+  // Gym Mode moves between exercises without the "finish on last" behaviour of
+  // nextExercise — swiping should just wrap-stop at the ends, never end the
+  // session by accident.
+  function gymGoTo(idx) {
+    if (idx < 0 || idx >= exerciseData.length) return;
+    setActiveIndex(idx);
+    const nx = exerciseData[idx];
+    setCurrent(defaultCurrentFor(nx.exercise, nx.suggestion, unit));
+  }
+
+  // Finishing from Gym Mode must drop the full-screen modal first, otherwise
+  // the effort/RPE prompt would render behind it and never be seen.
+  function finishFromGym() {
+    setGymMode(false);
+    finishWorkout();
+  }
+
   function finishWorkout() {
     const exercises = exerciseData
       .filter((e) => e.loggedSets.length > 0)
@@ -275,6 +295,9 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
       sRPE: effortValue ?? null,
     };
     await saveWorkout(session);
+    // Recompute reminder schedule off the fresh data (streak defended, muscle
+    // freshly trained, milestone maybe closer). Fire-and-forget.
+    refreshSmartNotifications();
 
     const prLines = [];
     let topPRRef = null;
@@ -338,6 +361,11 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
           </Pressable>
         </View>
       )}
+
+      <Pressable style={styles.gymModeBtn} onPress={() => setGymMode(true)} hitSlop={6}>
+        <Feather name="maximize" size={15} color={colors.accent} />
+        <Text style={styles.gymModeBtnText}>Enter Gym Mode</Text>
+      </Pressable>
 
       <View style={styles.tabsRow}>
         {exerciseData.map((e, i) => (
@@ -495,6 +523,29 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
         onSubmit={persistSession}
         onSkip={() => persistSession(null)}
       />
+
+      <Modal
+        visible={gymMode}
+        animationType="slide"
+        onRequestClose={() => setGymMode(false)}
+        presentationStyle="fullScreen"
+      >
+        <GymMode
+          activeEx={activeEx}
+          exerciseData={exerciseData}
+          activeIndex={activeIndex}
+          onPrev={() => gymGoTo(activeIndex - 1)}
+          onNext={() => gymGoTo(activeIndex + 1)}
+          current={current}
+          setCurrent={setCurrent}
+          unit={unit}
+          step={step}
+          onLogSet={logSet}
+          onFinish={finishFromGym}
+          onExit={() => setGymMode(false)}
+          elapsedLabel={workoutSession.active ? formatElapsed(workoutSession.elapsedSeconds) : '—'}
+        />
+      </Modal>
     </ScrollView>
   );
 }
@@ -779,4 +830,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   finishEarlyText: { color: colors.muted, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  gymModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(62,224,158,0.35)',
+    backgroundColor: 'rgba(62,224,158,0.06)',
+  },
+  gymModeBtnText: { color: colors.accent, fontSize: 14, fontWeight: '800' },
 });

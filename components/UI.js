@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, radius, shadows } from '../utils/theme';
+import { colors, spacing, radius, shadows, fonts } from '../utils/theme';
 
 export function Card({ children, style, active }) {
   return <View style={[styles.card, active && styles.cardActive, style]}>{children}</View>;
@@ -136,8 +136,9 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: colors.ctaText,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
+    letterSpacing: 0.3,
   },
   secondaryBtn: {
     backgroundColor: colors.cardAlt,
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: colors.text,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
   },
   outlineBtn: {
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
   },
   outlineBtnText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
   },
   stepperRow: {
@@ -202,5 +203,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
-  pillText: { fontSize: 11, fontWeight: '700' },
+  pillText: { fontSize: 11, fontFamily: fonts.bodyBold, letterSpacing: 0.4 },
 });

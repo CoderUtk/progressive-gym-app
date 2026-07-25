@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Pressable } from 'react-native';
+import { ActivityIndicator, View, Pressable, AppState } from 'react-native';
+import { refreshSmartNotifications } from '../utils/notifications';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -28,7 +29,7 @@ import RecordsScreen from '../screens/RecordsScreen';
 import AppLogo from './AppLogo';
 import AppHeaderTitle from './AppHeaderTitle';
 import ActiveSessionPill from './ActiveSessionPill';
-import { colors } from '../utils/theme';
+import { colors, fonts } from '../utils/theme';
 // Splash is now the initial route on every cold start; it handles the
 // state check and routes to Home / Welcome / SignIn on its own after the
 // intro animation. Keeps AppRoot dumb and eliminates the race where the
@@ -63,6 +64,7 @@ function HomeTabs() {
       screenOptions={{
         ...sharedHeaderOptions,
         tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.border },
+        tabBarLabelStyle: { fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 0.2 },
         tabBarActiveTintColor: '#3EE09E',
         tabBarInactiveTintColor: '#64748B',
       }}
@@ -94,6 +96,17 @@ export default function AppRoot() {
 }
 
 function NavShell() {
+  // Recompute local reminder schedule on launch and whenever the app returns
+  // to the foreground, so nudges reflect the latest workout data. No-op on web
+  // or without the native module (see utils/notifications).
+  useEffect(() => {
+    refreshSmartNotifications();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshSmartNotifications();
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <WorkoutSessionProvider>

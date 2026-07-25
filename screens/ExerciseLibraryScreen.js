@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Card, Pill } from '../components/UI';
 import MuscleIcon from '../components/MuscleIcon';
 import AddExerciseModal from '../components/AddExerciseModal';
-import { colors, spacing, muscleTint } from '../utils/theme';
+import { colors, spacing, muscleTint, fonts } from '../utils/theme';
 import {
   MUSCLE_GROUPS,
   searchExercises,
@@ -149,14 +149,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
     color: colors.text,
+    fontFamily: fonts.body,
+    fontSize: 15,
     marginBottom: spacing.sm,
   },
   filterScroll: { flexGrow: 0, flexShrink: 0, marginBottom: spacing.sm, marginTop: 2, minHeight: 44 },
   filterRow: { gap: spacing.xs, paddingVertical: 10, paddingRight: spacing.md, alignItems: 'center' },
   rowContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
   deleteBtn: { paddingLeft: spacing.sm, paddingVertical: spacing.xs },
-  exName: { color: colors.text, fontSize: 16, fontWeight: '700', lineHeight: 20 },
-  exMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
+  exName: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 16, lineHeight: 20 },
+  exMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 2 },
   iconWrap: {
     width: 44,
     height: 44,
@@ -166,7 +168,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  empty: { color: colors.muted, textAlign: 'center', marginTop: 40 },
+  empty: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, textAlign: 'center', marginTop: 40 },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -179,5 +181,5 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 12,
   },
-  addText: { color: colors.accent, fontSize: 14, fontWeight: '700' },
+  addText: { color: colors.accent, fontFamily: fonts.bodySemi, fontSize: 14 },
 });

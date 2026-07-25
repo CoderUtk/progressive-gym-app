@@ -50,6 +50,19 @@ export function muscleTint(muscle) {
   return muscleTints[muscle] || colors.accent;
 }
 
+// Type identity. Barlow Condensed is the athletic display voice — reserved for
+// numbers and headlines that should read like a scoreboard. Barlow (regular
+// width) handles body and labels. Using the family names directly means we set
+// weight through fontFamily, not fontWeight (which is ignored for custom faces).
+export const fonts = {
+  display: 'BarlowCondensed_700Bold', // hero numbers + big headlines
+  displaySemi: 'BarlowCondensed_600SemiBold', // secondary stats
+  body: 'Barlow_400Regular',
+  bodyMedium: 'Barlow_500Medium',
+  bodySemi: 'Barlow_600SemiBold',
+  bodyBold: 'Barlow_700Bold',
+};
+
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 
 export const radius = { sm: 8, md: 14, lg: 16, full: 999 };

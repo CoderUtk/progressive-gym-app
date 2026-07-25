@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Modal, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card, PrimaryButton } from '../components/UI';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, fonts } from '../utils/theme';
 import { getWorkoutDates, getWorkouts, getWeightUnit } from '../utils/storage';
 import { formatWeight, formatVolume } from '../utils/units';
 import { volumeForSet } from '../utils/setSchema';
@@ -212,25 +212,25 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, padding: spacing.lg },
   scoreLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  scoreLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase' },
+  scoreLabel: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase' },
   infoIcon: { color: colors.muted, fontSize: 14 },
-  scoreValue: { color: colors.accent, fontSize: 48, fontWeight: '900', marginVertical: spacing.xs },
+  scoreValue: { color: colors.accent, fontFamily: fonts.display, fontSize: 60, lineHeight: 62, includeFontPadding: false, marginVertical: spacing.xs, fontVariant: ['tabular-nums'] },
   scoreBreakdown: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-  breakdownText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
+  breakdownText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 12 },
   statsGrid: { flexDirection: 'row', gap: spacing.sm },
   statCard: { flex: 1, alignItems: 'center' },
-  statLabel: { color: colors.muted, fontSize: 11, fontWeight: '600', marginBottom: 4, textAlign: 'center' },
-  statValue: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  chartTitle: { color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm, textTransform: 'uppercase' },
-  chartHint: { color: colors.muted, fontSize: 12, marginTop: spacing.sm },
-  calendarHint: { color: colors.muted, fontSize: 11, marginBottom: spacing.sm },
+  statLabel: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 0.6, marginBottom: 4, textAlign: 'center', textTransform: 'uppercase' },
+  statValue: { color: colors.text, fontFamily: fonts.display, fontSize: 24, includeFontPadding: false, fontVariant: ['tabular-nums'] },
+  chartTitle: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1.4, marginBottom: spacing.sm, textTransform: 'uppercase' },
+  chartHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: spacing.sm },
+  calendarHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginBottom: spacing.sm },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
   modalCard: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
-  modalTitle: { color: colors.text, fontSize: 17, fontWeight: '800', marginBottom: spacing.sm },
-  modalBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: spacing.sm },
-  sectionLabel: { color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
+  modalTitle: { color: colors.text, fontFamily: fonts.bodyBold, fontSize: 18, marginBottom: spacing.sm },
+  modalBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginBottom: spacing.sm },
+  sectionLabel: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 12, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1.4 },
   streakStatsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   streakStat: { alignItems: 'center', flex: 1 },
-  streakStatValue: { color: colors.accent, fontSize: 24, fontWeight: '800' },
-  streakStatLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.4 },
+  streakStatValue: { color: colors.text, fontFamily: fonts.display, fontSize: 30, includeFontPadding: false, fontVariant: ['tabular-nums'] },
+  streakStatLabel: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 10, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.8 },
 });

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, Alert, Platform, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, PrimaryButton } from '../components/UI';
 import { colors, spacing } from '../utils/theme';
-import { getWeightUnit, setWeightUnit, getPlateIncrement, setPlateIncrement, clearAllData } from '../utils/storage';
+import { getWeightUnit, setWeightUnit, getPlateIncrement, setPlateIncrement, clearAllData, getSmartRemindersEnabled, setSmartRemindersEnabled } from '../utils/storage';
 import { isAuthConfigured, getCurrentSession, onAuthChange, signOut } from '../utils/authClient';
 import { backupToCloud } from '../utils/cloudSync';
+import { ensureNotificationPermission, refreshSmartNotifications, cancelAllReminders } from '../utils/notifications';
 
 const PLATE_OPTIONS = [1.25, 2.5, 5];
 
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
   const [unit, setUnit] = useState('kg');
   const [increment, setIncrement] = useState(2.5);
   const [session, setSession] = useState(null);
+  const [remindersOn, setRemindersOn] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
@@ -29,6 +31,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     getWeightUnit().then(setUnit);
     getPlateIncrement().then(setIncrement);
+    getSmartRemindersEnabled().then(setRemindersOn);
     if (!configured) return;
     getCurrentSession().then(setSession);
     const off = onAuthChange((s) => setSession(s));
@@ -105,6 +108,26 @@ export default function SettingsScreen() {
     );
   }
 
+  async function toggleReminders(value) {
+    setRemindersOn(value);
+    await setSmartRemindersEnabled(value);
+    if (value) {
+      const granted = await ensureNotificationPermission();
+      if (!granted && Platform.OS !== 'web') {
+        setRemindersOn(false);
+        await setSmartRemindersEnabled(false);
+        Alert.alert(
+          'Notifications are off',
+          'Enable notifications for Progressive in your device settings to get reminders.'
+        );
+        return;
+      }
+      refreshSmartNotifications();
+    } else {
+      cancelAllReminders();
+    }
+  }
+
   async function chooseUnit(value) {
     setUnit(value);
     await setWeightUnit(value);
@@ -153,6 +176,24 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
         ))}
+      </Card>
+
+      <Text style={styles.sectionLabel}>Reminders</Text>
+      <Text style={styles.helpText}>
+        Smart, occasional nudges — defend a streak, a neglected muscle group,
+        or a strength milestone within reach. Capped at 2 a day, computed on
+        your device. No spam.
+      </Text>
+      <Card style={{ marginBottom: spacing.lg }}>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Smart reminders</Text>
+          <Switch
+            value={remindersOn}
+            onValueChange={toggleReminders}
+            trackColor={{ false: colors.border, true: colors.accent }}
+            thumbColor={Platform.OS === 'android' ? colors.text : undefined}
+          />
+        </View>
       </Card>
 
       <Text style={styles.sectionLabel}>Danger Zone</Text>
@@ -238,6 +279,8 @@ const styles = StyleSheet.create({
   },
   radioOn: { borderColor: colors.accent },
   radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs },
+  switchLabel: { color: colors.text, fontSize: 16, fontWeight: '700' },
   accountName: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: spacing.xs },
   status: { color: colors.accent, fontSize: 12, fontWeight: '600', marginTop: spacing.sm },
   statusError: { color: colors.danger },

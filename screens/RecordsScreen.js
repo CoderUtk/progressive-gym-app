@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../components/UI';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, fonts } from '../utils/theme';
 import { getWorkouts, getWeightUnit, getProfile } from '../utils/storage';
 import { formatVolume, formatWeight } from '../utils/units';
 import { computeRecords } from '../utils/records';
@@ -96,14 +96,14 @@ export default function RecordsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   centerWrap: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  emptyText: { color: colors.muted, fontSize: 14, textAlign: 'center' },
-  helpText: { color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.md },
+  emptyText: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, textAlign: 'center' },
+  helpText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 18, marginBottom: spacing.md },
   sectionLabel: {
     color: colors.muted,
+    fontFamily: fonts.bodySemi,
     fontSize: 12,
-    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1.4,
     marginBottom: spacing.xs,
     marginLeft: spacing.xs,
   },
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowLabel: { color: colors.text, fontSize: 14, fontWeight: '700', lineHeight: 18 },
-  rowDate: { color: colors.mutedDim, fontSize: 11, marginTop: 2 },
-  rowValue: { color: colors.accent, fontSize: 16, fontWeight: '800' },
+  rowLabel: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 14, lineHeight: 18 },
+  rowDate: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
+  rowValue: { color: colors.accent, fontFamily: fonts.displaySemi, fontSize: 22, includeFontPadding: false, fontVariant: ['tabular-nums'] },
 });

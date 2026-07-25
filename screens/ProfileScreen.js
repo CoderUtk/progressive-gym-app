@@ -6,7 +6,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Card, Pill } from '../components/UI';
 import EditProfileModal from '../components/EditProfileModal';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, fonts } from '../utils/theme';
 import { getProfile, getWorkouts, getWeightUnit, updateProfile } from '../utils/storage';
 import { computeStats, computeLevel, getBadgeStatus } from '../utils/badges';
 import { computeMilestones, nextMilestoneSummary } from '../utils/milestones';
@@ -329,29 +329,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingsLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  settingsSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  name: { color: colors.text, fontSize: 22, fontWeight: '900' },
-  ageLine: { color: colors.muted, fontSize: 13, fontWeight: '600', marginTop: 2 },
+  settingsLabel: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 15 },
+  settingsSub: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+  name: { color: colors.text, fontFamily: fonts.display, fontSize: 28, includeFontPadding: false },
+  ageLine: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 2 },
   statsGrid: { flexDirection: 'row', gap: spacing.sm },
   statCard: { flex: 1, alignItems: 'center' },
-  statLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 },
-  statValue: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  sectionLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginBottom: spacing.xs },
-  helpText: { color: colors.mutedDim, fontSize: 12, marginBottom: spacing.sm, lineHeight: 17 },
+  statLabel: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 },
+  statValue: { color: colors.text, fontFamily: fonts.display, fontSize: 26, includeFontPadding: false, fontVariant: ['tabular-nums'] },
+  sectionLabel: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: spacing.xs },
+  helpText: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 12, marginBottom: spacing.sm, lineHeight: 17 },
   strengthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
   strengthRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  strengthLift: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  strengthE1RM: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  strengthMissing: { color: colors.mutedDim, fontSize: 12 },
+  strengthLift: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 15 },
+  strengthE1RM: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+  strengthMissing: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 12 },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badgeCard: { width: '31%', alignItems: 'center', paddingVertical: spacing.md },
   badgeLocked: { opacity: 0.6 },
   badgeEmoji: { fontSize: 28, marginBottom: spacing.xs },
-  badgeLabel: { color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  milestoneLabel: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  milestoneSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  milestoneHint: { color: colors.mutedDim, fontSize: 12, marginTop: spacing.sm, lineHeight: 17 },
+  badgeLabel: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 11, textAlign: 'center' },
+  milestoneLabel: { color: colors.text, fontFamily: fonts.bodyBold, fontSize: 16 },
+  milestoneSub: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+  milestoneHint: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 12, marginTop: spacing.sm, lineHeight: 17 },
   progressTrack: {
     height: 8,
     backgroundColor: colors.cardAlt,

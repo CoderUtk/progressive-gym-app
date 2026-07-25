@@ -1,10 +1,10 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Linking, Alert, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, Pressable, Linking, Alert, StyleSheet, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Card, PrimaryButton } from '../components/UI';
+import { PrimaryButton } from '../components/UI';
 import MuscleIcon from '../components/MuscleIcon';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, radius, fonts } from '../utils/theme';
 import { getExerciseById } from '../data/exercises';
 import {
   getWorkoutsForExercise,
@@ -16,13 +16,13 @@ import {
   getProfile,
   getWorkouts,
 } from '../utils/storage';
-
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 import { suggestNextTarget } from '../utils/progressiveOverload';
 import { formatWeight } from '../utils/units';
 import { stepForEquipment } from '../utils/increments';
 import { formatSet } from '../utils/setSchema';
 import { TRACKING } from '../data/exercises';
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function greetingFor(date = new Date()) {
   const h = date.getHours();
@@ -36,13 +36,10 @@ function daysSince(iso) {
   return Math.max(0, Math.floor(ms / 86400000));
 }
 
-// Title Case "Today" / "N days ago" — never dumps a lowercase word into the
-// stat card. `d` is the raw day-delta from daysSince(); returns the label
-// exactly as it should appear on screen.
 function lastSessionLabel(days) {
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  return `${days}d ago`;
+  return `${days}d`;
 }
 
 function openVideoGuide(name) {
@@ -50,6 +47,29 @@ function openVideoGuide(name) {
   Linking.openURL(`https://www.youtube.com/results?search_query=${q}`).catch(() =>
     Alert.alert('Video', 'Could not open YouTube.')
   );
+}
+
+// Count a number up from 0 on mount — the small motion touch that makes a stat
+// feel earned rather than just printed. Short and eased so it never feels slow.
+function useCountUp(target, duration = 650) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!target) { setValue(0); return undefined; }
+    let raf;
+    const start = Date.now();
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setValue(Math.round(eased * target));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    // Guarantee the final value lands even if rAF is throttled (backgrounded
+    // tab, reduced motion) — the number must never be left mid-count.
+    const settle = setTimeout(() => setValue(target), duration + 50);
+    return () => { cancelAnimationFrame(raf); clearTimeout(settle); };
+  }, [target, duration]);
+  return value;
 }
 
 export default function DashboardScreen({ navigation }) {
@@ -60,6 +80,10 @@ export default function DashboardScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ total: 0, lastDate: null });
   const [isScheduled, setIsScheduled] = useState(false);
+
+  // Fade + rise the content in once, when the first load settles.
+  const intro = useRef(new Animated.Value(0)).current;
+  const sessionCount = useCountUp(stats.total);
 
   const loadTargetsFor = useCallback(async (tmpl) => {
     const [weightUnit, increment] = await Promise.all([getWeightUnit(), getPlateIncrement()]);
@@ -86,8 +110,6 @@ export default function DashboardScreen({ navigation }) {
       getProfile(),
       getWorkouts(),
     ]);
-    // A routine pinned to today's weekday wins the Dashboard; otherwise fall
-    // back to the last-used (active) routine, preserving prior behaviour.
     const active = scheduled || all.find((t) => t.id === activeId) || all[0];
     setIsScheduled(!!scheduled);
     setTemplate(active);
@@ -104,6 +126,17 @@ export default function DashboardScreen({ navigation }) {
     }, [load])
   );
 
+  useEffect(() => {
+    if (loading) return;
+    intro.setValue(0);
+    Animated.timing(intro, {
+      toValue: 1,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [loading, intro]);
+
   function openTemplatePicker() {
     navigation.navigate('TemplateSelect', { activeTemplateId: template?.id });
   }
@@ -111,181 +144,232 @@ export default function DashboardScreen({ navigation }) {
   if (loading || !template) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: colors.muted }}>Loading…</Text>
+        <Text style={styles.loadingText}>Loading…</Text>
       </View>
     );
   }
 
   const firstName = profile?.name ? profile.name.split(/\s+/)[0] : null;
   const lastLabel = stats.lastDate ? lastSessionLabel(daysSince(stats.lastDate)) : '—';
+  const eyebrow = isScheduled
+    ? `${WEEKDAY_NAMES[new Date().getDay()]} · Today's plan`
+    : firstName
+      ? `${greetingFor()}, ${firstName}`
+      : greetingFor();
+  const fresh = stats.total === 0;
+
+  const introStyle = {
+    opacity: intro,
+    transform: [{ translateY: intro.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
-      <View style={styles.greetBlock}>
-        <Text style={styles.greetSmall}>{greetingFor()}</Text>
-        <Text style={styles.greetName}>{firstName ? `${firstName} 👋` : 'Welcome back'}</Text>
-      </View>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statPill}>
-          <Text style={styles.statValue}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Sessions Completed</Text>
-        </View>
-        <View style={styles.statPill}>
-          <Text style={styles.statValue}>{lastLabel}</Text>
-          <Text style={styles.statLabel}>Last Session</Text>
-        </View>
-      </View>
-
-      <View style={styles.todayCard}>
-        <Text style={styles.todayEyebrow}>
-          {isScheduled ? `${WEEKDAY_NAMES[new Date().getDay()].toUpperCase()}'S PLAN` : "TODAY'S TARGETS"}
-        </Text>
-        <View style={styles.todayTitleRow}>
-          <Text style={styles.todayTitle} numberOfLines={2}>{template.name}</Text>
-          <Pressable style={styles.changeBtn} onPress={openTemplatePicker}>
-            <Feather name="repeat" size={12} color={colors.text} />
-            <Text style={styles.changeBtnText}>Change</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Animated.View style={introStyle}>
+        {/* ── Hero: the workout as a headline ─────────────────── */}
+        <Text style={styles.eyebrow}>{eyebrow.toUpperCase()}</Text>
+        <View style={styles.heroRow}>
+          <Text style={styles.heroTitle} numberOfLines={2}>{template.name}</Text>
+          <Pressable style={styles.changePill} onPress={openTemplatePicker} hitSlop={6}>
+            <Feather name="repeat" size={12} color={colors.muted} />
+            <Text style={styles.changePillText}>Change</Text>
           </Pressable>
         </View>
-      </View>
 
-      {targets.length === 0 && (
-        <Card style={{ marginBottom: spacing.sm }}>
-          <Text style={{ color: colors.muted, textAlign: 'center' }}>
-            This workout has no exercises yet. Tap "Change Workout" to add some.
+        {/* ── Two quiet stats, scoreboard type ─────────────────── */}
+        <View style={styles.statStrip}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{sessionCount}</Text>
+            <Text style={styles.statLabel}>Sessions</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{lastLabel}</Text>
+            <Text style={styles.statLabel}>Last session</Text>
+          </View>
+        </View>
+
+        {/* ── Today's lifts, as clean rows ─────────────────────── */}
+        <Text style={styles.sectionEyebrow}>Today's lifts</Text>
+
+        {targets.length === 0 ? (
+          <Text style={styles.emptyRow}>
+            This routine's empty. Tap Change to add a few lifts and get going.
           </Text>
-        </Card>
-      )}
-
-      {targets.map(({ exercise, lastSession, suggestion }) => (
-        <Card key={exercise.id} style={{ marginBottom: spacing.sm }}>
-          <View style={styles.exerciseHeader}>
-            <MuscleIcon equipment={exercise.equipment} size={22} />
-            <Text style={styles.exerciseName} numberOfLines={2}>{exercise.name}</Text>
-            <Pressable onPress={() => openVideoGuide(exercise.name)} style={styles.videoBtn} hitSlop={6}>
-              <Feather name="play-circle" size={14} color={colors.accent} />
-              <Text style={styles.videoBtnText}>Video</Text>
-            </Pressable>
+        ) : (
+          <View style={styles.liftList}>
+            {targets.map(({ exercise, lastSession, suggestion }, i) => {
+              const isWeight = exercise.tracking_type === TRACKING.WEIGHT_REPS;
+              const goal = isWeight && suggestion.weight
+                ? `${formatWeight(suggestion.weight, unit)} × ${suggestion.reps}`
+                : null;
+              const last = lastSession && lastSession.sets.length
+                ? formatSet(
+                    exercise,
+                    [...lastSession.sets].sort(
+                      (a, b) => (b.weight || b.reps || b.durationSec || 0) - (a.weight || a.reps || a.durationSec || 0)
+                    )[0],
+                    unit
+                  )
+                : null;
+              return (
+                <View key={exercise.id} style={[styles.liftRow, i > 0 && styles.liftRowBorder]}>
+                  <View style={styles.liftIcon}>
+                    <MuscleIcon equipment={exercise.equipment} muscle={exercise.muscle} size={20} />
+                  </View>
+                  <View style={styles.liftMid}>
+                    <View style={styles.liftNameRow}>
+                      <Text style={styles.liftName} numberOfLines={1}>{exercise.name}</Text>
+                      {suggestion.alert === 'plateau' && <View style={styles.plateauDot} />}
+                    </View>
+                    <Text style={styles.liftLast} numberOfLines={1}>
+                      {last ? `Last ${last}` : 'No history yet'}
+                    </Text>
+                  </View>
+                  <View style={styles.liftGoal}>
+                    {goal ? (
+                      <>
+                        <Text style={styles.liftGoalValue}>{goal}</Text>
+                        <Text style={styles.liftGoalLabel}>Goal</Text>
+                      </>
+                    ) : (
+                      <Pressable onPress={() => openVideoGuide(exercise.name)} hitSlop={8}>
+                        <Feather name="play-circle" size={18} color={colors.mutedDim} />
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
           </View>
-          <View style={styles.row}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.label}>Last</Text>
-              <Text style={styles.value} numberOfLines={1}>
-                {lastSession && lastSession.sets.length
-                  ? formatSet(exercise, [...lastSession.sets].sort((a, b) => (b.weight || b.reps || b.durationSec || 0) - (a.weight || a.reps || a.durationSec || 0))[0], unit)
-                  : '—'}
-              </Text>
-            </View>
-            {exercise.tracking_type === TRACKING.WEIGHT_REPS && (
-              <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
-                <Text style={styles.label}>Today's Goal</Text>
-                <Text style={[styles.value, { color: colors.accent }]} numberOfLines={1}>
-                  {suggestion.weight ? `${formatWeight(suggestion.weight, unit)} × ${suggestion.reps}` : 'Log first set'}
-                </Text>
-              </View>
-            )}
-          </View>
-          {suggestion.alert === 'plateau' && (
-            <View style={styles.plateauBanner}>
-              <Feather name="alert-triangle" size={13} color={colors.gold} />
-              <Text style={styles.plateauText} numberOfLines={2}>{suggestion.note}</Text>
-            </View>
-          )}
-        </Card>
-      ))}
+        )}
 
-      <PrimaryButton
-        title="Start Workout"
-        disabled={targets.length === 0}
-        style={{ marginTop: spacing.md }}
-        onPress={() => navigation.navigate('WorkoutLogger', { template })}
-      />
-      <PrimaryButton
-        title="Edit Workout"
-        variant="secondary"
-        style={{ marginTop: spacing.sm }}
-        onPress={openTemplatePicker}
-      />
+        {/* ── One strong call to action ────────────────────────── */}
+        <PrimaryButton
+          title={fresh ? 'Start your first workout' : 'Start Workout'}
+          disabled={targets.length === 0}
+          style={{ marginTop: spacing.xl }}
+          onPress={() => navigation.navigate('WorkoutLogger', { template })}
+        />
+        <Pressable onPress={openTemplatePicker} style={styles.editLink} hitSlop={8}>
+          <Text style={styles.editLinkText}>Edit this routine</Text>
+        </Pressable>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: spacing.lg, paddingBottom: 48 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
-  greetBlock: { marginBottom: spacing.md },
-  greetSmall: { color: colors.muted, fontSize: 13, fontWeight: '600' },
-  greetName: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
-  statPill: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  statValue: { color: colors.accent, fontSize: 18, fontWeight: '800' },
-  statLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
-  todayCard: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  todayEyebrow: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.6,
+  loadingText: { color: colors.muted, fontFamily: fonts.body, fontSize: 15 },
+
+  eyebrow: {
+    color: colors.accent,
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    letterSpacing: 1.4,
     marginBottom: spacing.xs,
   },
-  todayTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  todayTitle: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: '800',
+  heroRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  heroTitle: {
     flex: 1,
-    lineHeight: 34,
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 46,
+    lineHeight: 48,
+    letterSpacing: 0.3,
+    includeFontPadding: false,
   },
-  changeBtn: {
+  changePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 8,
+    borderRadius: radius.full,
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    marginTop: 6,
+    marginTop: 8,
   },
-  changeBtnText: { color: colors.text, fontSize: 12, fontWeight: '700' },
-  exerciseHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm, flexWrap: 'wrap' },
-  exerciseName: { color: colors.text, fontSize: 17, fontWeight: '700', flex: 1, minWidth: 0, lineHeight: 22 },
-  videoBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 8, borderWidth: 1, borderColor: colors.border,
+  changePillText: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 12 },
+
+  statStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
   },
-  videoBtnText: { color: colors.accent, fontSize: 11, fontWeight: '700' },
-  plateauBanner: {
-    marginTop: spacing.sm,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: spacing.sm, paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(245,197,66,0.10)',
-    borderWidth: 1, borderColor: 'rgba(245,197,66,0.35)',
+  stat: { flex: 1 },
+  statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: colors.border },
+  statValue: {
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 34,
+    lineHeight: 36,
+    includeFontPadding: false,
   },
-  plateauText: { color: colors.gold, fontSize: 12, fontWeight: '600', flex: 1 },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '600', marginBottom: 2 },
-  value: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  statLabel: {
+    color: colors.muted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+
+  sectionEyebrow: {
+    color: colors.muted,
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
+  },
+  emptyRow: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
+
+  liftList: {},
+  liftRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md },
+  liftRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  liftIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  liftMid: { flex: 1, minWidth: 0 },
+  liftNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  liftName: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 16, flexShrink: 1 },
+  plateauDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.gold },
+  liftLast: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 13, marginTop: 1 },
+  liftGoal: { alignItems: 'flex-end', minWidth: 64 },
+  liftGoalValue: {
+    color: colors.accent,
+    fontFamily: fonts.displaySemi,
+    fontSize: 20,
+    lineHeight: 22,
+    includeFontPadding: false,
+  },
+  liftGoalLabel: {
+    color: colors.mutedDim,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+
+  editLink: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.xs },
+  editLinkText: {
+    color: colors.muted,
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
 });
