@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PrimaryButton } from '../components/UI';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, fonts } from '../utils/theme';
 import { saveProfile, setHasSeenOnboarding } from '../utils/storage';
 import { getCurrentUser } from '../utils/authClient';
 
@@ -165,10 +165,24 @@ const styles = StyleSheet.create({
   },
   logo: { width: 64, height: 64, borderRadius: 16 },
   avatar: { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.accent },
-  title: { color: colors.text, fontSize: 30, fontWeight: '800', marginBottom: spacing.xs },
-  subtitle: { color: colors.muted, fontSize: 15, marginBottom: spacing.lg },
+  title: {
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 34,
+    lineHeight: 36,
+    includeFontPadding: false,
+    marginBottom: spacing.xs,
+  },
+  subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 21, marginBottom: spacing.lg },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
-  label: { color: colors.text, fontSize: 13, fontWeight: '700', marginBottom: spacing.xs },
-  input: { backgroundColor: colors.bg, color: colors.text, borderRadius: 10, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.md },
-  requiredHint: { color: colors.mutedDim, fontSize: 11, marginBottom: spacing.sm },
+  label: {
+    color: colors.mutedDim,
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  input: { backgroundColor: colors.bg, color: colors.text, fontFamily: fonts.body, fontSize: 16, borderRadius: 10, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.md },
+  requiredHint: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 11, marginBottom: spacing.sm },
 });

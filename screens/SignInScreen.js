@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { PrimaryButton } from '../components/UI';
 import AppLogo from '../components/AppLogo';
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, fonts } from '../utils/theme';
 import {
   isAuthConfigured,
   signInWithGoogle,
@@ -218,6 +218,7 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginBottom: spacing.xl },
   blurb: {
     color: colors.muted,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
@@ -227,13 +228,13 @@ const styles = StyleSheet.create({
   actions: { gap: spacing.sm },
   status: {
     color: colors.accent,
+    fontFamily: fonts.bodySemi,
     fontSize: 12,
-    fontWeight: '600',
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   statusError: { color: colors.danger },
-  warningText: { color: colors.mutedDim, fontSize: 12, textAlign: 'center' },
+  warningText: { color: colors.mutedDim, fontFamily: fonts.body, fontSize: 12, textAlign: 'center' },
   input: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -242,11 +243,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 10,
     color: colors.text,
+    fontFamily: fonts.body,
     fontSize: 15,
   },
-  linkText: { color: colors.accent, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
+  linkText: { color: colors.accent, fontFamily: fonts.bodySemi, fontSize: 13, textAlign: 'center', paddingVertical: 6 },
   skipRow: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.sm },
-  skipText: { color: colors.muted, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
+  skipText: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 13, textDecorationLine: 'underline' },
   // White Google-branded button — matches the pattern users see on every
   // other app that offers Google sign-in. Recognizable at a glance.
   googleBtn: {

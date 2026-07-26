@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Pressable, AppState } from 'react-native';
+import { ActivityIndicator, View, Pressable, AppState, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { refreshSmartNotifications } from '../utils/notifications';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -85,6 +85,40 @@ const stackHeaderOptions = {
   headerLeft: () => <HeaderBackButton />,
 };
 
+// This app has one native target (Android phone) and one browser target
+// (web, viewed on everything from a phone to a desktop monitor). Every screen
+// is built as a fixed phone-width layout, so on a wide browser window it was
+// stretching edge-to-edge — the "scaled-up phone UI" failure mode, not an
+// adaptation. Cap it to a phone-width column above a threshold instead, so
+// wide viewports get a centered app shell rather than stretched components.
+// Native builds are untouched: the branch only activates on web.
+const MAX_CONTENT_WIDTH = 480;
+
+function ResponsiveShell({ children }) {
+  const { width } = useWindowDimensions();
+  if (Platform.OS !== 'web' || width <= MAX_CONTENT_WIDTH) {
+    return children;
+  }
+  return (
+    <View style={shellStyles.backdrop}>
+      <View style={shellStyles.shell}>{children}</View>
+    </View>
+  );
+}
+
+const shellStyles = StyleSheet.create({
+  backdrop: { flex: 1, minHeight: '100dvh', backgroundColor: '#05070A', alignItems: 'center' },
+  shell: {
+    flex: 1,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    backgroundColor: colors.bg,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: colors.border,
+  },
+});
+
 function HomeTabs() {
   return (
     <Tab.Navigator
@@ -135,29 +169,31 @@ function NavShell() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <WorkoutSessionProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <Stack.Navigator initialRouteName="Splash" screenOptions={stackHeaderOptions}>
-            <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="FeatureTour" component={FeatureTourScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="ProfileSummary" component={ProfileSummaryScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="DailyPlan" component={DailyPlanScreen} options={{ title: 'Choose Workout' }} />
-            <Stack.Screen name="Home" component={HomeTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="WorkoutLogger" component={WorkoutLoggerScreen} options={{ title: 'Log Workout' }} />
-            <Stack.Screen name="ExerciseHistory" component={ExerciseHistoryScreen} options={{ title: 'Exercise History' }} />
-            <Stack.Screen name="TemplateSelect" component={TemplateSelectScreen} options={{ title: 'My Routines' }} />
-            <Stack.Screen name="ExercisePicker" component={ExercisePickerScreen} options={{ title: 'Select Exercises' }} />
-            <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-            <Stack.Screen name="DayWorkout" component={DayWorkoutScreen} options={{ title: 'Workout History' }} />
-            <Stack.Screen name="Records" component={RecordsScreen} options={{ title: 'Records' }} />
-          </Stack.Navigator>
-          <ActiveSessionPill />
-        </NavigationContainer>
-      </WorkoutSessionProvider>
-    </SafeAreaProvider>
+    <ResponsiveShell>
+      <SafeAreaProvider>
+        <WorkoutSessionProvider>
+          <NavigationContainer>
+            <StatusBar style="light" />
+            <Stack.Navigator initialRouteName="Splash" screenOptions={stackHeaderOptions}>
+              <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="FeatureTour" component={FeatureTourScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ProfileSummary" component={ProfileSummaryScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="DailyPlan" component={DailyPlanScreen} options={{ title: 'Choose Workout' }} />
+              <Stack.Screen name="Home" component={HomeTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="WorkoutLogger" component={WorkoutLoggerScreen} options={{ title: 'Log Workout' }} />
+              <Stack.Screen name="ExerciseHistory" component={ExerciseHistoryScreen} options={{ title: 'Exercise History' }} />
+              <Stack.Screen name="TemplateSelect" component={TemplateSelectScreen} options={{ title: 'My Routines' }} />
+              <Stack.Screen name="ExercisePicker" component={ExercisePickerScreen} options={{ title: 'Select Exercises' }} />
+              <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+              <Stack.Screen name="DayWorkout" component={DayWorkoutScreen} options={{ title: 'Workout History' }} />
+              <Stack.Screen name="Records" component={RecordsScreen} options={{ title: 'Records' }} />
+            </Stack.Navigator>
+            <ActiveSessionPill />
+          </NavigationContainer>
+        </WorkoutSessionProvider>
+      </SafeAreaProvider>
+    </ResponsiveShell>
   );
 }

@@ -10,7 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { PrimaryButton } from '../components/UI';
-import { colors, spacing, radius } from '../utils/theme';
+import { colors, spacing, radius, fonts } from '../utils/theme';
 import { setHasSeenTour } from '../utils/storage';
 
 // First-run value carousel. Shown once (gated on hasSeenTour) before the
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   skipBtn: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  skipText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
+  skipText: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 15 },
   pager: { flex: 1 },
   slide: {
     flex: 1,
@@ -158,13 +158,16 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 26,
-    fontWeight: '800',
+    fontFamily: fonts.display,
+    fontSize: 30,
+    lineHeight: 32,
+    includeFontPadding: false,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   body: {
     color: colors.muted,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
