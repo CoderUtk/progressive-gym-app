@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View, Pressable, AppState } from 'react-native';
 import { refreshSmartNotifications } from '../utils/notifications';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
@@ -46,6 +46,26 @@ function TabIcon({ name, color }) {
   return <Feather name={name} size={22} color={color} />;
 }
 
+// Explicit back control for pushed stack screens. The native-stack header's
+// default back button is fine on iOS/Android, but on web (no swipe-back
+// gesture) it must be a visible, tappable control — and since we override
+// headerLeft with the logo on tabs, we must supply our own here or there'd be
+// no way back in a browser.
+function HeaderBackButton() {
+  const navigation = useNavigation();
+  return (
+    <Pressable
+      onPress={() => navigation.goBack()}
+      hitSlop={12}
+      style={{ paddingLeft: 12, paddingRight: 8, paddingVertical: 6 }}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+    >
+      <Feather name="chevron-left" size={26} color={colors.text} />
+    </Pressable>
+  );
+}
+
 // Shared across both navigators so the logo + "name · date" line shows up
 // on every screen with a header, not just the dashboard.
 const sharedHeaderOptions = {
@@ -56,6 +76,13 @@ const sharedHeaderOptions = {
   headerTitleAlign: 'center',
   headerLeft: () => <AppLogo />,
   headerTitle: ({ children }) => <AppHeaderTitle title={children} />,
+};
+
+// Pushed screens live in the root Stack and are always reachable via back,
+// so they get a chevron on the left instead of the (dead-end) logo.
+const stackHeaderOptions = {
+  ...sharedHeaderOptions,
+  headerLeft: () => <HeaderBackButton />,
 };
 
 function HomeTabs() {
@@ -112,7 +139,7 @@ function NavShell() {
       <WorkoutSessionProvider>
         <NavigationContainer>
           <StatusBar style="light" />
-          <Stack.Navigator initialRouteName="Splash" screenOptions={sharedHeaderOptions}>
+          <Stack.Navigator initialRouteName="Splash" screenOptions={stackHeaderOptions}>
             <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
             <Stack.Screen name="FeatureTour" component={FeatureTourScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />

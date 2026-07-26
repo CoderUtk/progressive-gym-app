@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Modal, FlatList, Pressable, StyleSheet, Alert, Platform } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card, Pill, PrimaryButton } from '../components/UI';
 import { colors, spacing, fonts } from '../utils/theme';
@@ -10,7 +11,6 @@ import {
   deleteTemplate,
   setActiveTemplateId,
   toggleTemplateDay,
-  DEFAULT_TEMPLATES,
 } from '../utils/storage';
 
 // Weekday chips shown Monday-first, but stored as JS getDay() values
@@ -66,6 +66,7 @@ export default function TemplateSelectScreen({ route, navigation }) {
         const template = { id, name: `My Routine ${nextIndex}`, exerciseIds: ids };
         await saveTemplate(template);
         load();
+        // Drop straight into rename so the auto-name can be replaced immediately.
         setRenaming({ template, draft: template.name });
       },
     });
@@ -96,29 +97,33 @@ export default function TemplateSelectScreen({ route, navigation }) {
     toggleTemplateDay(template.id, day).then(setTemplates);
   }
 
-  // Destructive "Delete" now lives behind a "•••" context menu instead of
-  // sitting next to "Edit", so it can't be tapped by accident.
-  function openMenu(template) {
-    const isBuiltIn = DEFAULT_TEMPLATES.some((d) => d.id === template.id);
-    const buttons = [
-      { text: 'Rename', onPress: () => startRename(template) },
-      { text: 'Edit exercises', onPress: () => editTemplate(template) },
-    ];
-    if (isBuiltIn) {
-      buttons.push({ text: 'Delete (unavailable for built-in)', onPress: () => {} });
-    } else {
-      buttons.push({
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Delete Template', `Remove "${template.name}"? This can't be undone.`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => removeTemplate(template) },
-          ]),
-      });
+  // Cross-platform info toast: Alert on native, window.alert on web (RNW's
+  // Alert is a no-op).
+  function notify(title, message) {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') window.alert(`${title}\n\n${message}`);
+      return;
     }
-    buttons.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert(template.name, 'Choose an action', buttons);
+    Alert.alert(title, message);
+  }
+
+  // Cross-platform destructive confirm: Alert on native, window.confirm on web.
+  // Built-in and custom routines can both be deleted now, but at least one
+  // workout must always remain in the library — block the last deletion.
+  function confirmTemplateDelete(template) {
+    if (templates.length <= 1) {
+      notify('Keep at least one workout', 'You need at least one workout in your library.');
+      return;
+    }
+    const msg = `Remove "${template.name}"? This can't be undone.`;
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(msg)) removeTemplate(template);
+      return;
+    }
+    Alert.alert('Delete workout', msg, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => removeTemplate(template) },
+    ]);
   }
 
   return (
@@ -133,7 +138,16 @@ export default function TemplateSelectScreen({ route, navigation }) {
             <Card style={styles.card} active={isActive}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+                  {/* Tap the title to rename inline. */}
+                  <Pressable
+                    onPress={() => startRename(item)}
+                    style={styles.nameRow}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Rename ${item.name}`}
+                  >
+                    <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+                    <Feather name="edit-2" size={13} color={colors.mutedDim} style={styles.nameEditIcon} />
+                  </Pressable>
                   <Text style={styles.exList}>
                     {item.exerciseIds.map((id) => getExerciseById(id)?.name).filter(Boolean).join(' · ') || 'No exercises yet'}
                   </Text>
@@ -159,8 +173,21 @@ export default function TemplateSelectScreen({ route, navigation }) {
               </View>
 
               <View style={styles.actionsRow}>
-                <Pressable style={styles.menuBtn} onPress={() => openMenu(item)}>
-                  <Text style={styles.menuBtnText}>•••</Text>
+                <Pressable
+                  style={styles.smallBtn}
+                  onPress={() => editTemplate(item)}
+                  accessibilityLabel={`Edit exercises in ${item.name}`}
+                >
+                  <Feather name="edit-3" size={14} color={colors.text} />
+                  <Text style={styles.smallBtnText}>Edit</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.smallBtn, styles.smallBtnDanger]}
+                  onPress={() => confirmTemplateDelete(item)}
+                  accessibilityLabel={`Delete ${item.name}`}
+                >
+                  <Feather name="trash-2" size={14} color={colors.danger} />
+                  <Text style={[styles.smallBtnText, styles.smallBtnTextDanger]}>Delete</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.useBtn, isActive && styles.useBtnActive]}
@@ -212,7 +239,9 @@ export default function TemplateSelectScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   card: { marginBottom: spacing.sm },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
   name: { color: colors.text, fontFamily: fonts.display, fontSize: 24, marginBottom: 4, lineHeight: 26, includeFontPadding: false },
+  nameEditIcon: { marginBottom: 4 },
   renameBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -271,17 +300,20 @@ const styles = StyleSheet.create({
   dayChipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   dayChipText: { color: colors.muted, fontFamily: fonts.bodyBold, fontSize: 13 },
   dayChipTextOn: { color: colors.ctaText },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
-  menuBtn: {
-    width: 40,
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.md },
+  smallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     height: 36,
+    paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  menuBtnText: { color: colors.muted, fontWeight: '900', fontSize: 16, letterSpacing: 1 },
+  smallBtnDanger: { borderColor: 'rgba(248,113,113,0.4)' },
+  smallBtnText: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 13 },
+  smallBtnTextDanger: { color: colors.danger },
   useBtn: {
     flex: 1,
     backgroundColor: colors.accent,

@@ -29,6 +29,7 @@ const KEYS = {
   WEIGHT_UNIT: 'progressive:weightUnit',
   PLATE_INCREMENT: 'progressive:plateIncrement',
   EXERCISE_NOTES: 'progressive:exerciseNotes',
+  DELETED_TEMPLATES: 'progressive:deletedTemplateIds',
 };
 
 // Per-exercise machine-setup memo (e.g. "Seat height 3", "Green band"). Keyed
@@ -84,12 +85,24 @@ export const DEFAULT_TEMPLATES = [
   { id: 'lower', name: 'Lower Body', exerciseIds: ['squat', 'deadlift', 'leg-press'] },
 ];
 
+// Built-in template ids the user has explicitly deleted. Kept as a tombstone
+// list because built-ins are re-seeded from DEFAULT_TEMPLATES on every read —
+// without this they'd reappear after deletion. Syncs to cloud like any
+// progressive:* key.
+export async function getDeletedTemplateIds() {
+  const raw = await AsyncStorage.getItem(KEYS.DELETED_TEMPLATES);
+  return raw ? JSON.parse(raw) : [];
+}
+
 export async function getTemplates() {
   const raw = await AsyncStorage.getItem(KEYS.TEMPLATES);
   const saved = raw ? JSON.parse(raw) : {};
-  // Merge: saved templates override built-ins with the same id, plus any
-  // brand-new custom templates the user created.
-  const merged = DEFAULT_TEMPLATES.map((t) => saved[t.id] || t);
+  const deleted = await getDeletedTemplateIds();
+  // Merge: saved templates override built-ins with the same id, minus any the
+  // user deleted, plus any brand-new custom templates they created.
+  const merged = DEFAULT_TEMPLATES
+    .filter((t) => !deleted.includes(t.id))
+    .map((t) => saved[t.id] || t);
   const customOnly = Object.values(saved).filter(
     (t) => !DEFAULT_TEMPLATES.some((d) => d.id === t.id)
   );
@@ -110,6 +123,15 @@ export async function deleteTemplate(templateId) {
   const saved = raw ? JSON.parse(raw) : {};
   delete saved[templateId];
   await AsyncStorage.setItem(KEYS.TEMPLATES, JSON.stringify(saved));
+  // Removing a built-in from `saved` isn't enough — it's re-seeded on read, so
+  // record a tombstone to keep it gone (and out of the day-scheduling too).
+  if (DEFAULT_TEMPLATES.some((d) => d.id === templateId)) {
+    const deleted = await getDeletedTemplateIds();
+    if (!deleted.includes(templateId)) {
+      deleted.push(templateId);
+      await AsyncStorage.setItem(KEYS.DELETED_TEMPLATES, JSON.stringify(deleted));
+    }
+  }
   scheduleAutoBackup();
   return getTemplates();
 }

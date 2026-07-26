@@ -174,9 +174,20 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Pressable onPress={editExercises} style={{ paddingHorizontal: 4 }}>
-          <Text style={{ color: colors.accent, fontWeight: '700' }}>Edit</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingRight: 4 }}>
+          <Pressable
+            onPress={finishSession}
+            hitSlop={8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            accessibilityLabel="Finish workout"
+          >
+            <Feather name="flag" size={14} color={colors.accent} />
+            <Text style={{ color: colors.accent, fontWeight: '800' }}>Finish</Text>
+          </Pressable>
+          <Pressable onPress={editExercises} hitSlop={8}>
+            <Text style={{ color: colors.text, fontWeight: '700' }}>Edit</Text>
+          </Pressable>
+        </View>
       ),
     });
   }, [exerciseData, activeIndex]);
@@ -277,6 +288,33 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
       { text: 'Keep going', style: 'cancel' },
       { text: 'Finish', onPress: finishWorkout },
     ]);
+  }
+
+  // Abandon a session with nothing logged — end the clock and leave without
+  // writing a workout.
+  function discardWorkout() {
+    if (workoutSession.active) workoutSession.finish();
+    navigation.navigate('Home');
+  }
+
+  // Single entry point for the always-available Finish control. Branches on
+  // whether anything's been logged: save-and-review if so, offer to discard if
+  // not. Persistent so a user can bail out at any point in the session.
+  function finishSession() {
+    const logged = exerciseData.reduce((n, e) => n + e.loggedSets.length, 0);
+    if (logged === 0) {
+      const msg = 'Discard this workout? Nothing has been logged yet.';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.confirm(msg)) discardWorkout();
+        return;
+      }
+      Alert.alert('Discard workout?', msg, [
+        { text: 'Keep going', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: discardWorkout },
+      ]);
+      return;
+    }
+    finishEarly();
   }
 
   async function persistSession(effortValue) {
@@ -493,10 +531,10 @@ export default function WorkoutLoggerScreen({ route, navigation }) {
         onPress={nextExercise}
       />
 
-      {activeIndex < exerciseData.length - 1 && totalLoggedSets > 0 && (
-        <Pressable onPress={finishEarly} style={styles.finishEarlyBtn} hitSlop={6}>
+      {activeIndex < exerciseData.length - 1 && (
+        <Pressable onPress={finishSession} style={styles.finishEarlyBtn} hitSlop={6}>
           <Feather name="flag" size={14} color={colors.muted} />
-          <Text style={styles.finishEarlyText}>Finish workout early</Text>
+          <Text style={styles.finishEarlyText}>Finish workout</Text>
         </Pressable>
       )}
 

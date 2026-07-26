@@ -76,15 +76,28 @@ export default function GymMode({
     setRest(REST_DEFAULT_SEC);
   }
 
+  // The PanResponder is created once (useRef), but onNext/onPrev are fresh
+  // closures every render (they capture the parent's activeIndex). Without
+  // these refs the responder would keep calling the FIRST render's handlers —
+  // which is exactly why swiping only ever jumped once and then went dead.
+  const onNextRef = useRef(onNext);
+  const onPrevRef = useRef(onPrev);
+  onNextRef.current = onNext;
+  onPrevRef.current = onPrev;
+
   // Horizontal swipe changes exercise; vertical drags are ignored so the
-  // steppers stay tappable. Thresholds keep accidental taps from switching.
+  // steppers stay tappable. Capture variants claim the gesture even when the
+  // drag starts over a child (the stepper buttons), so a real swipe isn't
+  // swallowed by them.
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_e, g) =>
-        Math.abs(g.dx) > 24 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+        Math.abs(g.dx) > 18 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
+      onMoveShouldSetPanResponderCapture: (_e, g) =>
+        Math.abs(g.dx) > 18 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
       onPanResponderRelease: (_e, g) => {
-        if (g.dx <= -60) onNext?.();
-        else if (g.dx >= 60) onPrev?.();
+        if (g.dx <= -50) onNextRef.current?.();
+        else if (g.dx >= 50) onPrevRef.current?.();
       },
     })
   ).current;

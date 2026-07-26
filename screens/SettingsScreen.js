@@ -20,17 +20,24 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const [unit, setUnit] = useState('kg');
   const [increment, setIncrement] = useState(2.5);
+  // Saved baselines — preferences are drafts until the user taps Save, so we
+  // can show an unsaved-changes state and an explicit confirmation.
+  const [savedUnit, setSavedUnit] = useState('kg');
+  const [savedIncrement, setSavedIncrement] = useState(2.5);
+  const [prefsSaved, setPrefsSaved] = useState(false);
   const [session, setSession] = useState(null);
   const [remindersOn, setRemindersOn] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
 
+  const prefsDirty = unit !== savedUnit || increment !== savedIncrement;
+
   const configured = isAuthConfigured();
 
   useEffect(() => {
-    getWeightUnit().then(setUnit);
-    getPlateIncrement().then(setIncrement);
+    getWeightUnit().then((v) => { setUnit(v); setSavedUnit(v); });
+    getPlateIncrement().then((v) => { setIncrement(v); setSavedIncrement(v); });
     getSmartRemindersEnabled().then(setRemindersOn);
     if (!configured) return;
     getCurrentSession().then(setSession);
@@ -128,14 +135,24 @@ export default function SettingsScreen() {
     }
   }
 
-  async function chooseUnit(value) {
+  // Preferences are drafts — selecting only updates local state. Persistence
+  // happens on Save, so the user gets an explicit confirmation.
+  function chooseUnit(value) {
     setUnit(value);
-    await setWeightUnit(value);
+    setPrefsSaved(false);
   }
 
-  async function chooseIncrement(value) {
+  function chooseIncrement(value) {
     setIncrement(value);
-    await setPlateIncrement(value);
+    setPrefsSaved(false);
+  }
+
+  async function handleSavePrefs() {
+    await Promise.all([setWeightUnit(unit), setPlateIncrement(increment)]);
+    setSavedUnit(unit);
+    setSavedIncrement(increment);
+    setPrefsSaved(true);
+    setTimeout(() => setPrefsSaved(false), 2500);
   }
 
   return (
@@ -177,6 +194,19 @@ export default function SettingsScreen() {
           </Pressable>
         ))}
       </Card>
+
+      <View style={{ marginBottom: spacing.lg }}>
+        <PrimaryButton
+          title={prefsDirty ? 'Save Preferences' : 'Preferences Saved'}
+          onPress={handleSavePrefs}
+          variant={prefsDirty ? 'primary' : 'secondary'}
+        />
+        {prefsSaved ? (
+          <Text style={styles.savedConfirm}>Preferences saved ✓</Text>
+        ) : prefsDirty ? (
+          <Text style={styles.unsavedHint}>You have unsaved changes</Text>
+        ) : null}
+      </View>
 
       <Text style={styles.sectionLabel}>Reminders</Text>
       <Text style={styles.helpText}>
@@ -284,4 +314,6 @@ const styles = StyleSheet.create({
   accountName: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: spacing.xs },
   status: { color: colors.accent, fontSize: 12, fontWeight: '600', marginTop: spacing.sm },
   statusError: { color: colors.danger },
+  savedConfirm: { color: colors.accent, fontSize: 13, fontWeight: '700', marginTop: spacing.sm, textAlign: 'center' },
+  unsavedHint: { color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: spacing.sm, textAlign: 'center' },
 });
