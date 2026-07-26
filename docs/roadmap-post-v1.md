@@ -1,5 +1,8 @@
 # Progressive — Post-v1.0 Roadmap
 
+> **Status: COMPLETE.** Every item below (v1.1–v1.4) shipped. For what's next,
+> see [`roadmap-post-v2.md`](./roadmap-post-v2.md).
+
 Features queued for after Play Store submission. Ordered by (a) unlock value
 for early retention and (b) technical dependency chain.
 
