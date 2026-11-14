@@ -13,8 +13,11 @@ test('catalogue grows past 1000 and built-ins come first', () => {
 });
 test('custom exercises sit between built-ins and dataset', () => {
   setCustomExercisesInMemory([{ id: 'custom-x', name: 'Zzz', muscle: 'Core' }]);
-  assert.equal(getAllExercises()[EXERCISES.length].id, 'custom-x');
-  setCustomExercisesInMemory([]);
+  try {
+    assert.equal(getAllExercises()[EXERCISES.length].id, 'custom-x');
+  } finally {
+    setCustomExercisesInMemory([]);
+  }
 });
 test('barbell bench press duplicate dropped, dumbbell variant kept', () => {
   const names = getAllExercises().map(e => e.name.toLowerCase());
@@ -23,10 +26,18 @@ test('barbell bench press duplicate dropped, dumbbell variant kept', () => {
 });
 test('hidden dataset exercise disappears from list but resolves by id', () => {
   const id = getAllExercises().find(e => e.id.startsWith('edb-')).id;
-  hideExerciseInMemory(id);
-  assert.ok(!getAllExercises().some(e => e.id === id));
-  assert.equal(getExerciseById(id).id, id);
-  setHiddenExercisesInMemory([]);
+  try {
+    hideExerciseInMemory(id);
+    assert.ok(!getAllExercises().some(e => e.id === id));
+    assert.equal(getExerciseById(id).id, id);
+  } finally {
+    setHiddenExercisesInMemory([]);
+  }
+});
+test('distinct variants are kept', () => {
+  assert.ok(searchExercises('diamond push').length >= 1);
+  assert.ok(searchExercises('archer pull').length >= 1);
+  assert.ok(searchExercises('3/4 sit').length >= 1);
 });
 test('dataset exercises are hide-not-delete', () => {
   assert.equal(isBuiltInExercise(getAllExercises().find(e => e.id.startsWith('edb-')).id), true);

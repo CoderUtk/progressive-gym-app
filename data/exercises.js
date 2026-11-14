@@ -121,10 +121,12 @@ const _builtInByKey = new Map();
 for (const e of BUILT_IN_EXERCISES) {
   for (const k of [e.name, ...(e.aliases || [])]) _builtInByKey.set(_norm(k), e);
 }
+// Only a leading equipment word may be stripped; "Diamond Push-Up" is not "Push-Up".
+const _EQUIPMENT_WORDS = new Set(['barbell', 'dumbbell', 'cable', 'lever', 'smith', 'sled', 'ez', 'ez-bar', 'ez-barbell']);
 const CATALOGUE_EXTRAS = EXERCISEDB_EXERCISES.filter((x) => {
   if (_builtInByKey.has(_norm(x.name))) return false;
-  const rest = _norm(x.name.split(/\s+/).slice(1).join(' '));
-  const match = rest && _builtInByKey.get(rest);
+  const [first, ...tail] = x.name.toLowerCase().split(/\s+/);
+  const match = _EQUIPMENT_WORDS.has(first) && _builtInByKey.get(_norm(tail.join(' ')));
   return !(match && match.equipment === x.equipment);
 });
 
