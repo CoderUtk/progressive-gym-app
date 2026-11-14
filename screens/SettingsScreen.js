@@ -269,6 +269,10 @@ export default function SettingsScreen() {
           </View>
         )}
       </Card>
+
+      <Text style={styles.helpText}>
+        Exercise data from ExerciseDB via hasaneyldrm/exercises-dataset (MIT licence).
+      </Text>
     </ScrollView>
   );
 }
