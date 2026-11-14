@@ -8,6 +8,8 @@
 //   BODYWEIGHT_REPS  — { reps, addedWeight (kg, can be 0 or negative for assist), type }
 //   TIMED_HOLD       — { durationSec, type }
 //   CARDIO           — { durationSec, distance, distanceUnit ('km'|'mi'), level, incline, calories, heartRate, type }
+import { EXERCISEDB_EXERCISES } from './exercisedb.js';
+
 export const TRACKING = {
   WEIGHT_REPS: 'WEIGHT_REPS',
   BODYWEIGHT_REPS: 'BODYWEIGHT_REPS',
@@ -110,6 +112,22 @@ const BUILT_IN_EXERCISES = [
   { id: 'elliptical', name: 'Elliptical', muscle: 'Cardio', secondary: [], equipment: 'Machine', aliases: [], emoji: '🏃', tracking_type: TRACKING.CARDIO },
 ];
 
+// ExerciseDB entries minus those duplicating a built-in. Computed once.
+// Dropped when the normalized name matches a built-in name/alias, or when the
+// name minus its first word matches AND the matching built-in's equipment is
+// the same (e.g. "Barbell Bench Press" vs built-in "Bench Press"/Barbell).
+const _norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const _builtInByKey = new Map();
+for (const e of BUILT_IN_EXERCISES) {
+  for (const k of [e.name, ...(e.aliases || [])]) _builtInByKey.set(_norm(k), e);
+}
+const CATALOGUE_EXTRAS = EXERCISEDB_EXERCISES.filter((x) => {
+  if (_builtInByKey.has(_norm(x.name))) return false;
+  const rest = _norm(x.name.split(/\s+/).slice(1).join(' '));
+  const match = rest && _builtInByKey.get(rest);
+  return !(match && match.equipment === x.equipment);
+});
+
 // ─── Custom exercise infra ────────────────────────────────────────────────
 // User-added exercises live in AsyncStorage. We load them into an in-memory
 // array on app start (see SplashScreen) so the existing sync APIs
@@ -138,7 +156,7 @@ export function hideExerciseInMemory(id) {
 }
 
 export function isBuiltInExercise(id) {
-  return BUILT_IN_EXERCISES.some((e) => e.id === id);
+  return BUILT_IN_EXERCISES.some((e) => e.id === id) || CATALOGUE_EXTRAS.some((e) => e.id === id);
 }
 
 export function addCustomExerciseInMemory(ex) {
@@ -154,19 +172,22 @@ export function deleteCustomExerciseInMemory(id) {
 // Live combined list, EXCLUDING hidden built-ins. This is the "visible
 // catalog" used by search, the library, and the exercise picker. We
 // reconstruct on every access so freshly-added/removed items show up
-// immediately without a reactive subscription — the array is small.
+// immediately without a reactive subscription — cheap array spreads/filters.
 export function getAllExercises() {
   const visibleBuiltIns = _hiddenIds.length
     ? BUILT_IN_EXERCISES.filter((e) => !_hiddenIds.includes(e.id))
     : BUILT_IN_EXERCISES;
-  return [...visibleBuiltIns, ..._customExercises];
+  const visibleExtras = _hiddenIds.length
+    ? CATALOGUE_EXTRAS.filter((e) => !_hiddenIds.includes(e.id))
+    : CATALOGUE_EXTRAS;
+  return [...visibleBuiltIns, ..._customExercises, ...visibleExtras];
 }
 
 // Full list INCLUDING hidden built-ins — used only for id lookups so that
 // historical workouts referencing a hidden exercise still resolve its name,
 // muscle, and tracking type when rendering history and analytics.
 function getAllExercisesIncludingHidden() {
-  return [...BUILT_IN_EXERCISES, ..._customExercises];
+  return [...BUILT_IN_EXERCISES, ..._customExercises, ...CATALOGUE_EXTRAS];
 }
 
 // Kept for backwards compatibility with existing code that imports EXERCISES
