@@ -42,3 +42,13 @@ test('distinct variants are kept', () => {
 test('dataset exercises are hide-not-delete', () => {
   assert.equal(isBuiltInExercise(getAllExercises().find(e => e.id.startsWith('edb-')).id), true);
 });
+
+test('getExerciseById resolves built-ins and custom exercises', () => {
+  assert.equal(getExerciseById('bench-press').name, 'Bench Press');
+  try {
+    setCustomExercisesInMemory([{ id: 'custom-x', name: 'Custom X', muscle: 'Core', equipment: 'Bodyweight', aliases: [] }]);
+    assert.equal(getExerciseById('custom-x').name, 'Custom X');
+  } finally {
+    setCustomExercisesInMemory([]);
+  }
+});

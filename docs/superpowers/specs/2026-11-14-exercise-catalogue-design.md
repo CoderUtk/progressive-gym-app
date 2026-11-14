@@ -38,9 +38,9 @@ looks thin next to apps like openGym. Grow the catalogue to ~1,300 exercises.
   upper/lower arms→Arms, shoulders & neck→Shoulders, waist→Core, cardio→Cardio.
 - **Secondary** from `secondary_muscles` mapped onto the same 7 groups (plus Glutes as built-ins already use), deduped, primary removed.
 - **Equipment:** map onto `EQUIPMENT_TYPES` where natural (barbell/EZ/olympic→Barbell,
-  lever/sled/smith/assisted machine→Machine, body weight/weighted/assisted→Bodyweight, …);
+  lever/sled/smith/assisted machine→Machine, body weight/weighted→Bodyweight, …);
   anything else keeps its Title-Cased dataset value.
-- **tracking_type:** cardio→CARDIO; name contains plank/hold/hang→TIMED_HOLD;
+- **tracking_type:** cardio→CARDIO; name contains plank/hold (not push-up/tap/lift/fly/adduction)→TIMED_HOLD;
   body weight→BODYWEIGHT_REPS; else WEIGHT_REPS.
 - **Dedupe:** skip a dataset entry whose normalized name matches a built-in name or alias.
 - **Ordering** in `data/exercises.js`: built-ins, then custom, then dataset — so built-ins rank first in search and muscle tabs.

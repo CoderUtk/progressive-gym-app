@@ -130,6 +130,8 @@ const CATALOGUE_EXTRAS = EXERCISEDB_EXERCISES.filter((x) => {
   return !(match && match.equipment === x.equipment);
 });
 
+const _catalogueById = new Map([...BUILT_IN_EXERCISES, ...CATALOGUE_EXTRAS].map((e) => [e.id, e]));
+
 // ─── Custom exercise infra ────────────────────────────────────────────────
 // User-added exercises live in AsyncStorage. We load them into an in-memory
 // array on app start (see SplashScreen) so the existing sync APIs
@@ -158,7 +160,7 @@ export function hideExerciseInMemory(id) {
 }
 
 export function isBuiltInExercise(id) {
-  return BUILT_IN_EXERCISES.some((e) => e.id === id) || CATALOGUE_EXTRAS.some((e) => e.id === id);
+  return _catalogueById.has(id);
 }
 
 export function addCustomExerciseInMemory(ex) {
@@ -185,13 +187,6 @@ export function getAllExercises() {
   return [...visibleBuiltIns, ..._customExercises, ...visibleExtras];
 }
 
-// Full list INCLUDING hidden built-ins — used only for id lookups so that
-// historical workouts referencing a hidden exercise still resolve its name,
-// muscle, and tracking type when rendering history and analytics.
-function getAllExercisesIncludingHidden() {
-  return [...BUILT_IN_EXERCISES, ..._customExercises, ...CATALOGUE_EXTRAS];
-}
-
 // Kept for backwards compatibility with existing code that imports EXERCISES
 // directly. Points at the built-in list only — screens that want to include
 // custom exercises call getAllExercises() or use searchExercises.
@@ -210,7 +205,7 @@ export function searchExercises(query) {
 }
 
 export function getExerciseById(id) {
-  return getAllExercisesIncludingHidden().find((e) => e.id === id);
+  return _catalogueById.get(id) ?? _customExercises.find((e) => e.id === id);
 }
 
 export const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Arms', 'Shoulders', 'Core', 'Cardio'];

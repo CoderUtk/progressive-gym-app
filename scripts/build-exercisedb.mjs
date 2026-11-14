@@ -33,7 +33,14 @@ SOFTWARE.`;
 
 const raw = JSON.parse(readFileSync(src, 'utf8'));
 const records = Array.isArray(raw) ? raw : raw.exercises;
-const entries = records.map(convertRecord).sort((a, b) => a.id.localeCompare(b.id));
+const converted = records.map(convertRecord).sort((a, b) => a.id.localeCompare(b.id));
+const seenNames = new Set();
+const entries = converted.filter((e) => {
+  const k = e.name.toLowerCase();
+  if (seenNames.has(k)) return false;
+  seenNames.add(k);
+  return true;
+});
 
 const header = `/*
  * GENERATED FILE - DO NOT EDIT. Regenerate with scripts/build-exercisedb.mjs.
@@ -46,4 +53,4 @@ ${LICENSE.split('\n').map((l) => (l ? ` * ${l}` : ' *')).join('\n')}
 
 const body = `export const EXERCISEDB_EXERCISES = [\n${entries.map((e) => `  ${JSON.stringify(e)},`).join('\n')}\n];\n`;
 writeFileSync(new URL('../data/exercisedb.js', import.meta.url), header + body);
-console.log(`Wrote ${entries.length} exercises`);
+console.log(`Wrote ${entries.length} exercises (dropped ${converted.length - entries.length} duplicate names)`);

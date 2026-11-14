@@ -27,7 +27,7 @@ const EMOJI = { Chest: '🏋️', Back: '🏋️', Shoulders: '🏋️', Legs: '
 
 export function titleCase(str) {
   return str
-    .split(/([ -])/)
+    .split(/([ (-])/)
     .map((t) => (t === 'ez' ? 'EZ' : /^\d/.test(t) ? t : t.charAt(0).toUpperCase() + t.slice(1)))
     .join('');
 }
@@ -36,7 +36,7 @@ export function convertRecord(rec) {
   const muscle = MUSCLE[rec.category] ?? 'Core';
   const secondary = [...new Set((rec.secondary_muscles ?? []).map((m) => SECONDARY[m.toLowerCase()]).filter(Boolean))].filter((m) => m !== muscle);
   const tracking_type = rec.category === 'cardio' ? 'CARDIO'
-    : /\b(plank|hold|hang)\b/i.test(rec.name) ? 'TIMED_HOLD'
+    : /\b(plank|hold)\b/i.test(rec.name) && !/(push-up|tap|lift|fly|adduction)/i.test(rec.name) ? 'TIMED_HOLD'
     : rec.equipment === 'body weight' ? 'BODYWEIGHT_REPS'
     : 'WEIGHT_REPS';
   return {
